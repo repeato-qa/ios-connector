@@ -139,7 +139,8 @@ struct _rmdevice {
             char hostname[63];
             char scale[4]; // float
             char isIPad[4]; // int
-            char expansion[64];
+            char protocolVersion[4];// int
+            char expansion[60];
             char magic[4]; // int
         } remote;
         struct {
@@ -570,12 +571,14 @@ static CGSize bufferSize; // current size of off-screen image buffers
     NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
     strncpy(device.remote.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.remote.appname-1);
     strncpy(device.remote.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.remote.appvers-1);
-
+    
     gethostname(device.remote.hostname, sizeof device.remote.hostname-1);
 
     *(float *)device.remote.scale = [screens[0] scale];
     *(int *)device.remote.isIPad =
         [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    
+    *(int *)device.remote.protocolVersion = 100;
 #else // REMOTE_MINICAP
     // prepare minicap banner
     device.version = MINICAP_VERSION;
