@@ -7,7 +7,7 @@ import PackageDescription
 import Foundation
 
 let hostname = Host.current().name ?? "localhost"
-
+NSLog("hoostName: '%s'", hostname)
 let package = Package(
     name: "RemotePlugin",
     platforms: [.iOS("10.0"), .macOS("10.12")],
@@ -16,7 +16,9 @@ let package = Package(
         .library(name: "RemoteMovie", targets: ["RemoteMovie"]),
         .library(name: "RemoteUI", targets: ["RemoteUI"]),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/bugfender/BugfenderSDK-iOS", from: "1.10.0"),
+    ],
     targets: [
         .target(name: "RemoteCapture",
                 cSettings: [.define("DEVELOPER_HOST",
@@ -25,3 +27,4 @@ let package = Package(
         .target(name: "RemoteUI", dependencies: ["RemoteCapture", "RemoteMovie"]),
     ]
 )
+

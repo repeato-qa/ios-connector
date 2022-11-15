@@ -57,6 +57,10 @@ typedef NS_ENUM(int, DBGState) {
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
+    [Bugfender activateLogger:@"lh8fnqq5yinrymNGXPk4mzrvOStV5eld"];
+    [Bugfender enableCrashReporting];
+    [Bugfender enableUIEventLogging];  // optional, log user interactions automatically
+    
     if ( ![[NSBundle bundleForClass:[self class]] loadNibNamed:@"RMPluginController" owner:self topLevelObjects:NULL] ) {
         if ( [[NSAlert alertWithMessageText:@"Remote Plugin:"
                               defaultButton:@"OK" alternateButton:@"Goto GitHub" otherButton:nil

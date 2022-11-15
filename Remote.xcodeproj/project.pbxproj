@@ -26,6 +26,7 @@
 		BBBD4F5F1A4AF5C6009969E1 /* unpatch.py in Resources */ = {isa = PBXBuildFile; fileRef = BBBD4F5E1A4AF5C6009969E1 /* unpatch.py */; };
 		BBC38E511A5BCD4900AD6F80 /* RMDeviceController.m in Sources */ = {isa = PBXBuildFile; fileRef = BBC38E501A5BCD4900AD6F80 /* RMDeviceController.m */; };
 		BBF5D8E31912DFCA0037CE2E /* RMPluginController.xib in Resources */ = {isa = PBXBuildFile; fileRef = BBF5D8E21912DFCA0037CE2E /* RMPluginController.xib */; };
+		CE0325B9A2B44F9B0C066D3E /* Pods_Remote.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B54323DE79AADBFED31CA30 /* Pods_Remote.framework */; };
 		DA1B5D020E64686800921439 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 089C1672FE841209C02AAC07 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -41,6 +42,7 @@
 
 /* Begin PBXFileReference section */
 		089C1672FE841209C02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
+		7B54323DE79AADBFED31CA30 /* Pods_Remote.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Remote.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F2EB899145057EA00E97A87 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		8D5B49B6048680CD000E48DA /* Remote.xcplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Remote.xcplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 		BBBD4F5E1A4AF5C6009969E1 /* unpatch.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = unpatch.py; sourceTree = "<group>"; };
 		BBC38E501A5BCD4900AD6F80 /* RMDeviceController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = RMDeviceController.m; path = ../Sources/RemoteUI/RMDeviceController.m; sourceTree = "<group>"; };
 		BBF5D8E21912DFCA0037CE2E /* RMPluginController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = RMPluginController.xib; sourceTree = "<group>"; };
+		C435315778F8780368887053 /* Pods-Remote.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Remote.debug.xcconfig"; path = "Target Support Files/Pods-Remote/Pods-Remote.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -82,13 +85,22 @@
 				7F2EB89C145057F200E97A87 /* AppKit.framework in Frameworks */,
 				BB61FC2A1A629AC300833642 /* QTKit.framework in Frameworks */,
 				BBBD4F541A4AEA35009969E1 /* libz.dylib in Frameworks */,
+				CE0325B9A2B44F9B0C066D3E /* Pods_Remote.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		089C166AFE841209C02AAC07 /* QuietXcode */ = {
+		00AE9950D1A1965906EAF415 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7B54323DE79AADBFED31CA30 /* Pods_Remote.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		089C166AFE841209C02AAC07 = {
 			isa = PBXGroup;
 			children = (
 				BB25264B1F65D1A300898347 /* LICENSE */,
@@ -99,6 +111,8 @@
 				089C167CFE841241C02AAC07 /* Resources */,
 				089C1671FE841209C02AAC07 /* Frameworks and Libraries */,
 				19C28FB8FE9D52D311CA2CBB /* Products */,
+				C81E5961A398818FEA2F9EA8 /* Pods */,
+				00AE9950D1A1965906EAF415 /* Frameworks */,
 			);
 			name = QuietXcode;
 			sourceTree = "<group>";
@@ -166,6 +180,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		C81E5961A398818FEA2F9EA8 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				C435315778F8780368887053 /* Pods-Remote.debug.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -173,6 +196,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "Remote" */;
 			buildPhases = (
+				4670ED57CA3190774064FFEB /* [CP] Check Pods Manifest.lock */,
 				8D5B49B1048680CD000E48DA /* Sources */,
 				8D5B49B3048680CD000E48DA /* Frameworks */,
 				BB5251F8160A2EF700276EB3 /* Resources */,
@@ -212,7 +236,8 @@
 				German,
 				en,
 			);
-			mainGroup = 089C166AFE841209C02AAC07 /* QuietXcode */;
+			mainGroup = 089C166AFE841209C02AAC07;
+			productRefGroup = 19C28FB8FE9D52D311CA2CBB /* Products */;
 			projectDirPath = "";
 			projectReferences = (
 				{
@@ -258,6 +283,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		4670ED57CA3190774064FFEB /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Remote-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		BB126F3A192DAF8400416E57 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -292,6 +339,7 @@
 /* Begin XCBuildConfiguration section */
 		1DEB913B08733D840010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = C435315778F8780368887053 /* Pods-Remote.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;

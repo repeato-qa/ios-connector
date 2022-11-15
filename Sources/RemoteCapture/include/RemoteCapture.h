@@ -52,7 +52,7 @@
 #endif
 
 #ifndef REMOTE_JPEGQUALITY
-#define REMOTE_JPEGQUALITY 0.8
+#define REMOTE_JPEGQUALITY 0.5
 #endif
 
 #ifndef REMOTE_RETRIES
@@ -102,6 +102,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <os/log.h>
 
 #ifdef REMOTE_LEGACY
 static BOOL remoteLegacy = TRUE;
@@ -412,6 +413,8 @@ static char *connectionKey;
 /// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
 + (void)startCapture:(NSString *)addrs {
+    [UIApplication.sharedApplication setIdleTimerDisabled:true];
+    
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
 }
@@ -428,7 +431,7 @@ static char *connectionKey;
             port = (in_port_t)parts[1].intValue;
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
-            NSLog(@"%@: Connected to %@:%d.", self, inaddr, port);
+            os_log(OS_LOG_DEFAULT, "%@: Connected to %@:%d.", self, inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
             [newConnections addObject:[NSValue valueWithPointer:writeFp]];
         }
@@ -447,13 +450,13 @@ static char *connectionKey;
         int headerSize = 1 + (device.version == MINICAP_VERSION ?
             sizeof device.minicap : sizeof device.remote);
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
-            NSLog(@"%@: Could not write device info: %s", self, strerror(errno));
+            os_log(OS_LOG_DEFAULT, "%@: Could not write device info: %s", self, strerror(errno));
         else if (device.version == REMOTE_VERSION &&
                  fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
-            NSLog(@"%@: Could not write keylen: %s", self, strerror(errno));
+            os_log(OS_LOG_DEFAULT, "%@: Could not write keylen: %s", self, strerror(errno));
         else if (device.version == REMOTE_VERSION &&
                  fwrite(connectionKey, 1, keylen, writeFp) != keylen)
-            NSLog(@"%@: Could not write key: %s", self, strerror(errno));
+            os_log(OS_LOG_DEFAULT, "%@: Could not write key: %s", self, strerror(errno));
         else
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
@@ -477,19 +480,20 @@ static char *connectionKey;
     remoteAddr.sin_family = AF_INET;
     remoteAddr.sin_port = htons(port);
 
-    if (isdigit(ipAddress[0]))
-        inet_aton(ipAddress, &remoteAddr.sin_addr);
-    else {
+    if (isdigit(ipAddress[0])){
+        int valid = inet_aton(ipAddress, &remoteAddr.sin_addr);
+        os_log(OS_LOG_DEFAULT, "Adress valid (0 == invalid): %d", valid);
+    } else {
         struct hostent *ent = gethostbyname2(ipAddress, remoteAddr.sin_family);
         if (ent)
             memcpy(&remoteAddr.sin_addr, ent->h_addr_list[0], sizeof remoteAddr.sin_addr);
         else {
-            NSLog(@"%@: Could not look up host '%s'", self, ipAddress);
+            os_log(OS_LOG_DEFAULT, "%@: Could not look up host '%s'", self, ipAddress);
             return 0;
         }
     }
 
-    NSLog(@"%@: Attempting connection to: %s:%d", self, ipAddress, port);
+    os_log(OS_LOG_DEFAULT, "%@: Attempting connection tooo: %s:%d", self, ipAddress, port);
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
@@ -498,18 +502,21 @@ static char *connectionKey;
 + (int)connectAddr:(struct sockaddr *)remoteAddr {
     int remoteSocket, optval = 1;
     if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0)
-        NSLog(@"%@: Could not open socket for injection: %s", self, strerror(errno));
+        os_log(OS_LOG_DEFAULT, "%@: Could not open socket for injection: %s", self, strerror(errno));
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
-        NSLog(@"%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
+        os_log(OS_LOG_DEFAULT, "%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
     else
         for (int retry = 0; retry<REMOTE_RETRIES; retry++) {
             if (retry)
                 [NSThread sleepForTimeInterval:1.0];
-            if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0)
+            os_log(OS_LOG_DEFAULT, "Try #%d", retry);
+            if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
+                os_log(OS_LOG_DEFAULT, "Connected!");
                 return remoteSocket;
+            }
         }
 
-    NSLog(@"%@: Could not connect: %s", self, strerror(errno));
+    os_log(OS_LOG_DEFAULT, "%@: Could not connect: %s", self, strerror(errno));
     close(remoteSocket);
     return 0;
 }
@@ -574,11 +581,11 @@ static CGSize bufferSize; // current size of off-screen image buffers
     
     gethostname(device.remote.hostname, sizeof device.remote.hostname-1);
 
-    *(float *)device.remote.scale = [screens[0] scale];
+    *(float *)device.remote.scale = 2; //[screens[0] scale];
     *(int *)device.remote.isIPad =
         [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 100;
+    *(int *)device.remote.protocolVersion = 116;
 #else // REMOTE_MINICAP
     // prepare minicap banner
     device.version = MINICAP_VERSION;
@@ -822,9 +829,9 @@ static int frameno; // count of frames captured and transmmitted
                                     sizeof frameSize : sizeof frame;
             if (fwrite(device.version <= HYBRID_VERSION ? (void *)&frameSize :
                       (void *)&frame, 1, frameHeaderSize, writeFp) != frameHeaderSize)
-                NSLog(@"%@: Could not write frame: %s", self, strerror(errno));
+                os_log(OS_LOG_DEFAULT, "%@: Could not write frame: %s", self, strerror(errno));
             else if (fwrite(encoded.bytes, 1, encoded.length, writeFp) != encoded.length)
-                NSLog(@"%@: Could not write encoded: %s", self, strerror(errno));
+                os_log(OS_LOG_DEFAULT, "%@: Could not write encoded: %s", self, strerror(errno));
             else
                 fflush(writeFp);
         }
@@ -874,7 +881,14 @@ static int frameno; // count of frames captured and transmmitted
             fakeEvent->_timestamp = timestamp;
 
             if (sentText) {
-                [textField insertText:sentText];
+                if ([sentText isEqualToString:@"repeato:quit_app"]) {
+                    os_log(OS_LOG_DEFAULT, "Remote asked to quit app");
+                    exit(0);
+                } else {
+                    os_log(OS_LOG_DEFAULT, "Insert text");
+                    [textField insertText:sentText];
+                }
+
                 return;
             }
 
@@ -890,6 +904,7 @@ static int frameno; // count of frames captured and transmmitted
                         if (found)
                             currentTarget = found;
                     }
+                    
 
                     RMDebug(@"Double Target selected: %@", currentTarget);
 
@@ -1064,14 +1079,14 @@ static int frameno; // count of frames captured and transmmitted
                     break;
 
                 default:
-                    NSLog(@"%@: Invalid Event: %d", self, rpevent.phase);
+                    os_log(OS_LOG_DEFAULT, "%@: Invalid Event: %d", self, rpevent.phase);
             }
 
             inhibitEcho = nil;
         });
     }
 
-    NSLog(@"%@: processEvents: exits", self);
+    os_log(OS_LOG_DEFAULT, "%@: processEvents: exits", self);
     fclose(readFp);
 
     [connections removeObject:writeFp];
@@ -1191,7 +1206,7 @@ static int frameno; // count of frames captured and transmmitted
                 continue;
             FILE *writeFp = (FILE *)fp.pointerValue;
             if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
-                NSLog(@"%@: Could not write event: %s", REMOTE_APPNAME.class, strerror(errno));
+                os_log(OS_LOG_DEFAULT, "%@: Could not write event: %s", REMOTE_APPNAME.class, strerror(errno));
             else
                 fflush(writeFp);
         }
