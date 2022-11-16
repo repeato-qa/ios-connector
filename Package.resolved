@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "BugfenderPackage",
+        "repositoryURL": "https://github.com/bugfender/BugfenderSDK-iOS",
+        "state": {
+          "branch": null,
+          "revision": "de0ecc33d3767a3b3d2b9969005250dd0eff3c11",
+          "version": "1.10.6"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

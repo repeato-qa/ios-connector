@@ -562,12 +562,9 @@ static CGSize bufferSize; // current size of off-screen image buffers
         class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
 
-#ifndef REMOTE_MINICAP
-#if defined(REMOTE_HYBRID)
+
     device.version = HYBRID_VERSION;
-#else
-    device.version = REMOTE_VERSION;
-#endif
+
     // prepare remote header
     *(int *)device.remote.magic = REMOTE_MAGIC;
 
@@ -581,23 +578,12 @@ static CGSize bufferSize; // current size of off-screen image buffers
     
     gethostname(device.remote.hostname, sizeof device.remote.hostname-1);
 
-    *(float *)device.remote.scale = 2; //[screens[0] scale];
+    *(float *)device.remote.scale = 2;
     *(int *)device.remote.isIPad =
         [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
     *(int *)device.remote.protocolVersion = 116;
-#else // REMOTE_MINICAP
-    // prepare minicap banner
-    device.version = MINICAP_VERSION;
-    device.minicap.headerSize = sizeof(device.version) + sizeof(device.minicap);
-    *(uint32_t *)device.minicap.pid = getpid();
-    *(uint32_t *)device.minicap.virtualWidth = screens[0].bounds.size.width;
-    *(uint32_t *)device.minicap.virtualHeight = screens[0].bounds.size.width;
-    *(uint32_t *)device.minicap.realWidth =
-        *(uint32_t *)device.minicap.virtualWidth * [screens[0] scale];
-    *(uint32_t *)device.minicap.realHeight =
-        *(uint32_t *)device.minicap.virtualHeight * [screens[0] scale];
-#endif
+
 }
 
 static int skipEcho; // Was to filter out layer commits during capture
@@ -632,8 +618,7 @@ static int frameno; // count of frames captured and transmmitted
     UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
-    CGFloat imageScale = device.version == MINICAP_VERSION ? 1. :
-        *(int *)device.remote.isIPad || *(float *)device.remote.scale == 3. ? 1. : screen.scale;
+    CGFloat imageScale = *(int *)device.remote.isIPad ? 1. : 2.;
     __block struct _rmframe frame = {REMOTE_NOW,
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
@@ -653,100 +638,37 @@ static int frameno; // count of frames captured and transmmitted
 //    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
 
     // The various ways to capture a screenshot over the years...
-    if (remoteLegacy) {
-        RMDebug(@"CAPTURE LEGACY");
-        BOOL benchmark = FALSE;
-        for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-            NSTimeInterval start = REMOTE_NOW;
-#if 0
-            UIView *snap = [window snapshotViewAfterScreenUpdates:YES];
-            [snap.layer renderInContext:buffer->cg];
-#else
-            [[window layer] renderInContext:buffer->cg];
-#endif
-            if(benchmark)
-                RMLog(@"%@ %f", NSStringFromCGRect(window.bounds),
-                      REMOTE_NOW-start);
-        }
-        skipEcho = 2;
-    }
-    else {
-        capturing = TRUE;
-        RMDebug(@"CAPTURE0");
-        NSTimeInterval start = REMOTE_NOW;
-        CGRect screenBounds = [self screenBounds];
-        CGSize screenSize = screenBounds.size;
-#if 00
-        UIView *snapshotView = [keyWindow snapshotViewAfterScreenUpdates:YES];
-        RMDebug(@"CAPTURE1");
-        UIGraphicsBeginImageContextWithOptions(screenSize, YES, 0);
-        [snapshotView drawViewHierarchyInRect:snapshotView.bounds afterScreenUpdates:NO];
-        screenshot = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        BOOL displayingKeyboard = [[UIApplication sharedApplication].windows.lastObject
-                                   isKindOfClass:objc_getClass("UIRemoteKeyboardWindow")];
-        static BOOL displayedKeyboard;
-        if (displayingKeyboard)
-            displayedKeyboard = TRUE;
-        skipEcho = displayedKeyboard ? displayingKeyboard ? 10 : 8 : 6;
-#else
+  
+    capturing = TRUE;
+    RMDebug(@"CAPTURE0");
+    NSTimeInterval start = REMOTE_NOW;
+
 //        extern CGImageRef UIGetScreenImage(void);
 //        CGImageRef screenimage = UIGetScreenImage();
 //        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
-        CGRect fullBounds = CGRectMake(0, 0,
-                                       screenSize.width*REMOTE_OVERSAMPLE,
-                                       screenSize.height*REMOTE_OVERSAMPLE);
-#if 01
-        UIGraphicsBeginImageContext(fullBounds.size);
-        for (UIWindow *window in [UIApplication sharedApplication].windows)
-            if (!window.isHidden)
-#if 01
-                [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
-#else
-                [window.layer renderInContext:UIGraphicsGetCurrentContext()];
-#endif
-        screenshot = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-#else // Using snapshotViewAfterScreenUpdates (not faster and loops)
-        static UIView *screenshotView;
-        if (!screenshotView || 1)
-            screenshotView = [[UIScreen mainScreen] snapshotViewAfterScreenUpdates:NO];
-        RMBench("Sanpshot #%d(%d), %.1fms %f\n", frameno, flush, (REMOTE_NOW-start)*1000., timestamp);
+    CGRect fullBounds = CGRectMake(0, 0,
+                                   screenSize.width * 2,
+                                   screenSize.height * 2);
+    UIGraphicsBeginImageContext(fullBounds.size);
+    for (UIWindow *window in [UIApplication sharedApplication].windows)
+        if (!window.isHidden)
+            [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSTimeInterval start = REMOTE_NOW;
-            UIGraphicsBeginImageContext(fullBounds.size);
-            [screenshotView drawViewHierarchyInRect:fullBounds afterScreenUpdates:YES];
-//            [screenshotView.layer renderInContext:UIGraphicsGetCurrentContext()];
-            UIImage *screenshot = UIGraphicsGetImageFromCurrentImageContext();
-            UIGraphicsEndImageContext();
-            RMBench("Render #%d(%d), %.1fms %f\n", frameno, flush,
-                    (REMOTE_NOW-start)*1000., timestamp);
-            capturing = FALSE;
-            skipEcho = 0;
+    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush,
+    (REMOTE_NOW-start)*1000., timestamp);
 
-            dispatch_async(writeQueue, ^{
-                if (timestamp < mostRecentScreenUpdate && !flush) {
-                    frameno--;
-                    return;
-                }
+    screenshot = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
 
-                NSTimeInterval start = REMOTE_NOW;
-                [self encodeAndTransmit:screenshot screenSize:screenSize
-                                  frame:frame buffer:buffer prevbuff:prevbuff];
-                RMBench("Sent #%d(%d), %.1fms %f\n", frameno, flush,
-                        (REMOTE_NOW-start)*1000., timestamp);
-            });
-        });
-        return;
-#endif
-        skipEcho = 0;
-#endif
-        RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
-        capturing = FALSE;
-        RMBench("Captured #%d(%d), %.1fms %f\n", frameno, flush,
-                (REMOTE_NOW-start)*1000., timestamp);
-    }
+    
+
+    skipEcho = 0;
+
+    RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
+    capturing = FALSE;
+    RMBench("Captured #%d(%d), %.1fms %f\n", frameno, flush,
+            (REMOTE_NOW-start)*1000., timestamp);
+    
 
     dispatch_async(writeQueue, ^{
         if (timestamp < mostRecentScreenUpdate && !flush) {

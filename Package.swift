@@ -13,8 +13,6 @@ let package = Package(
     platforms: [.iOS("10.0"), .macOS("10.12")],
     products: [
         .library(name: "RemoteCapture", targets: ["RemoteCapture"]),
-        .library(name: "RemoteMovie", targets: ["RemoteMovie"]),
-        .library(name: "RemoteUI", targets: ["RemoteUI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/bugfender/BugfenderSDK-iOS", from: "1.10.0"),
@@ -23,8 +21,6 @@ let package = Package(
         .target(name: "RemoteCapture",
                 cSettings: [.define("DEVELOPER_HOST",
                                     to: "\"\(hostname)\"")]),
-        .target(name: "RemoteMovie"),
-        .target(name: "RemoteUI", dependencies: ["RemoteCapture", "RemoteMovie"]),
     ]
 )
 
