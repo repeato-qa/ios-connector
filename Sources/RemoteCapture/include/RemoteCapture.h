@@ -698,11 +698,7 @@ static int frameno; // count of frames captured and transmmitted
 {
         NSData *encoded;
         if (device.version <= HYBRID_VERSION)
-#ifdef REMOTE_PNGFORMAT
-            encoded = UIImagePNGRepresentation(screenshot);
-#else
             encoded = UIImageJPEGRepresentation(screenshot, REMOTE_JPEGQUALITY);
-#endif
         else {
             if (screenshot)
                 CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
@@ -732,16 +728,6 @@ static int frameno; // count of frames captured and transmmitted
                 return;
             }
 
-#ifdef REMOTE_COMPRESSION
-            struct _rmcompress *buff = malloc(sizeof buff->bytes + encoded.length + 100);
-            uLongf clen = buff->bytes = (unsigned)encoded.length;
-            if (compress2(buff->data, &clen, (const Bytef *)encoded.bytes,
-                          buff->bytes, Z_BEST_SPEED) == Z_OK && clen < encoded.length) {
-                encoded = [NSMutableData dataWithBytesNoCopy:buff length:sizeof buff->bytes+clen freeWhenDone:YES];
-                RMLog(@"%@: Delta image %d/%d %.1f%%", self, (int)encoded.length, frame.length, 100.*encoded.length/frame.length);
-                frame.length = REMOTE_COMPRESSED_OFFSET + (int)encoded.length;
-            }
-#endif
         }
 
         for (NSValue *fp in connections) {
@@ -835,34 +821,18 @@ static int frameno; // count of frames captured and transmmitted
                     [currentTouch2 setTimestamp:timestamp];
                     [currentTouch2 setInitialTouchTimestamp:timestamp];
                     [currentTouch2 setPhase:(UITouchPhase)rpevent.phase];
-//                    [currentTouch2 setSentTouchesEnded:false];
                     [currentTouch2 setWindow:currentTarget.window];
-//                    [currentTouch2 _setDisplacement:CGSizeMake(0.0, 0.0)];
-//                    [currentTouch2 _setWindowServerHitTestWindow:currentTarget.window];
                     [currentTouch2 _setTouchIdentifier:touchIdentifier];
                     [currentTouch2 _setPathIndex:1];
                     [currentTouch2 _setPathIdentity:2];
-//                    [currentTouch2 setMajorRadius:20.0];
-//                    [currentTouch2 setMajorRadiusTolerance:5.0];
                     [currentTouch2 _setType:0];
-//                    [currentTouch2 _setNeedsForceUpdate:false];
-//                    [currentTouch2 _setHasForceUpdate:false];
-//                    [currentTouch2 _setForceCorrelationToken:0];
                     [currentTouch2 _setSenderID:778835616971358211];
                     [currentTouch2 _setZGradient:0.0];
-//                    [currentTouch2 _setMaximumPossiblePressure:0.0];
                     [currentTouch2 _setEdgeType:0];
                     [currentTouch2 _setEdgeAim:0];
 
-                    //[self _setIsFirstTouchForView:1];
                     [currentTouch2 setView:currentTarget];
-//                    [currentTouch2 _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
-//                    [currentTouch2 _setPressure:0.0 resetPrevious:true];
-                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
-//                    [currentTouch2 setIsTap:true];
                     [currentTouch2 setTapCount:1];
-//                    [currentTouch2 _setIsFirstTouchForView:true];
-
                     [currentTouch2 _setLocationInWindow:location resetPrevious:YES];
 
                 case RMTouchBegan:
@@ -917,34 +887,16 @@ static int frameno; // count of frames captured and transmmitted
                     [currentTouch setTimestamp:timestamp];
                     [currentTouch setInitialTouchTimestamp:timestamp];
                     [currentTouch setPhase:(UITouchPhase)rpevent.phase];
-//                    [currentTouch setSentTouchesEnded:false];
                     [currentTouch setWindow:currentTarget.window];
-//                    [currentTouch _setDisplacement:CGSizeMake(0.0, 0.0)];
-//                    [currentTouch _setWindowServerHitTestWindow:currentTarget.window];
-//                    [currentTouch _setTouchIdentifier:touchIdentifier];
                     [currentTouch _setPathIndex:1];
                     [currentTouch _setPathIdentity:2];
-//                    [currentTouch setMajorRadius:20.0];
-//                    [currentTouch setMajorRadiusTolerance:5.0];
                     [currentTouch _setType:0];
-//                    [currentTouch _setNeedsForceUpdate:false];
-//                    [currentTouch _setHasForceUpdate:false];
-//                    [currentTouch _setForceCorrelationToken:0];
                     [currentTouch _setSenderID:778835616971358211];
                     [currentTouch _setZGradient:0.0];
-//                    [currentTouch _setMaximumPossiblePressure:0.0];
                     [currentTouch _setEdgeType:0];
                     [currentTouch _setEdgeAim:0];
-
-                    //[self _setIsFirstTouchForView:1];
                     [currentTouch setView:currentTarget];
-//                    [currentTouch _setLocation:location preciseLocation:location inWindowResetPreviousLocation:true];
-//                    [currentTouch _setPressure:0.0 resetPrevious:true];
-                    //[UITouch _updateWithChildEvent:0x600001ff81c0];
-//                    [currentTouch setIsTap:true];
                     [currentTouch setTapCount:1];
-//                    [currentTouch _setIsFirstTouchForView:true];
-
                     [currentTouch _setLocationInWindow:location resetPrevious:YES];
 
                     currentTouches = [NSSet setWithObjects:currentTouch, currentTouch2, nil];
@@ -1037,6 +989,7 @@ static int frameno; // count of frames captured and transmmitted
     BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
     if (flush)
         lastCaptureTime = timestamp;
+    
     dispatch_async(writeQueue, ^{
         int64_t delta = 0;
         if (!flush) {
@@ -1044,11 +997,8 @@ static int frameno; // count of frames captured and transmmitted
                 RMBench("Discard 1\n");
                 return;
             }
-#if 0
-            [NSThread sleepForTimeInterval:REMOTE_DEFER];
-#else
+            
             delta = (int64_t)(REMOTE_DEFER * NSEC_PER_SEC);
-#endif
         }
 
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
@@ -1099,11 +1049,10 @@ static int frameno; // count of frames captured and transmmitted
     NSValue *incomingFp = inhibitEcho;
     realTouch = touches.anyObject;
 
-#if 0
-    RMLog(@"%@", anEvent);
-    for (UITouch *t in touches)
-        RMLog(@"Gestures: %@", t.gestureRecognizers);
-#endif
+//    RMLog(@"%@", anEvent);
+//    for (UITouch *t in touches)
+//        RMLog(@"Gestures: %@", t.gestureRecognizers);
+
 
     struct _rmframe header;
     header.timestamp = REMOTE_NOW;
