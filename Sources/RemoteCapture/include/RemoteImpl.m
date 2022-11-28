@@ -12,10 +12,22 @@
 #define REMOTE_IMPL
 #import "RemoteCapture.h"
 
-#ifdef DEVELOPER_HOST
+
 @implementation RemoteCapture(AutoConnect)
 + (void)load {
-    [self startCapture:@DEVELOPER_HOST];
+    NSArray *arguments = [[NSProcessInfo processInfo] arguments];
+    //os_log(OS_LOG_DEFAULT, "%@: Launch arguments: %{public}@", self, arguments);
+    NSUInteger index = [arguments indexOfObject:@"host-address"];
+    //NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
+    if (index == NSNotFound) {
+        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found, using localhost! Launch arguments: %{public}@", self, arguments);
+        [self startCapture:@"localhost"];
+    } else {
+        NSString *hostAddress = arguments[index + 1];
+        os_log(OS_LOG_DEFAULT, "%@: Host-address: %{public}@!", self, hostAddress);
+        [self startCapture:hostAddress];
+    }
+    //NSLog(@"launch arguments: %@",yourArray);
+    
 }
 @end
-#endif
