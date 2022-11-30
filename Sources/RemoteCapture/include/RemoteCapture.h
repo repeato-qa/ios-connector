@@ -14,6 +14,7 @@
 #import <sys/socket.h>
 #import <arpa/inet.h>
 #import <netdb.h>
+#import <netdb.h>
 #import <zlib.h>
 
 #import "RemoteHeaders.h"
@@ -141,20 +142,10 @@ struct _rmdevice {
             char scale[4]; // float
             char isIPad[4]; // int
             char protocolVersion[4];// int
-            char expansion[60];
+            char displaySize[12]; // 9999x9999
+            char expansion[48];
             char magic[4]; // int
         } remote;
-        struct {
-            // See: https://github.com/openstf/minicap#usage
-            char headerSize;
-            char pid[4];
-            char realWidth[4];
-            char realHeight[4];
-            char virtualWidth[4];
-            char virtualHeight[4];
-            unsigned char orientation;
-            unsigned char quirks;
-        } minicap;
     };
 };
 
@@ -213,7 +204,7 @@ struct _rmevent {
 #import <objc/runtime.h>
 
 @interface REMOTE_APPNAME(Client)
-+ (void)startCapture:(NSString *)addrs;
++ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s;
 + (void)shutdown;
 @end
 
@@ -412,9 +403,10 @@ static char *connectionKey;
 
 /// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
-+ (void)startCapture:(NSString *)addrs {
++ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
+    scaleUpFactor = s;
     [UIApplication.sharedApplication setIdleTimerDisabled:true];
-    
+    os_log(OS_LOG_DEFAULT, "%@: Start capture at '%{public}@' with scaleUpFactor %{public}f...", self, addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
 }
@@ -422,6 +414,7 @@ static char *connectionKey;
 /// Connect in the backgrand rather than hold application up.
 /// @param addrs space separate list of IPV4 addresses or hostnames
 + (BOOL)backgroundConnect:(NSString *)addrs {
+    
     NSMutableArray *newConnections = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
@@ -429,6 +422,7 @@ static char *connectionKey;
         in_port_t port = REMOTE_PORT;
         if (parts.count > 1)
             port = (in_port_t)parts[1].intValue;
+        os_log(OS_LOG_DEFAULT, "%@: Connecting to %@:%d...", self, inaddr, port);
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
             os_log(OS_LOG_DEFAULT, "%@: Connected to %@:%d.", self, inaddr, port);
@@ -447,8 +441,7 @@ static char *connectionKey;
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
         FILE *writeFp = (FILE *)fp.pointerValue;
-        int headerSize = 1 + (device.version == MINICAP_VERSION ?
-            sizeof device.minicap : sizeof device.remote);
+        int headerSize = 1 + sizeof device.remote;
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
             os_log(OS_LOG_DEFAULT, "%@: Could not write device info: %s", self, strerror(errno));
         else if (device.version == REMOTE_VERSION &&
@@ -493,7 +486,7 @@ static char *connectionKey;
         }
     }
 
-    os_log(OS_LOG_DEFAULT, "%@: Attempting connection tooo: %s:%d", self, ipAddress, port);
+    os_log(OS_LOG_DEFAULT, "%@: Attempting connection to: %s:%d", self, ipAddress, port);
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
@@ -578,16 +571,21 @@ static CGSize bufferSize; // current size of off-screen image buffers
     
     gethostname(device.remote.hostname, sizeof device.remote.hostname-1);
 
-    *(float *)device.remote.scale = 2;
-    *(int *)device.remote.isIPad =
-        [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    *(float *)device.remote.scale = scaleUpFactor;
+    *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 116;
-
+    *(int *)device.remote.protocolVersion = 117;
+    CGRect screenBounds = [self screenBounds];
+    CGSize screenSize = screenBounds.size;
+    
+    NSString *displaySize = [NSString stringWithFormat:@"%ix%i", (int) screenSize.width, (int) screenSize.height];
+    strncpy(device.remote.displaySize, [displaySize UTF8String], sizeof device.remote.displaySize-1);
 }
 
 static int skipEcho; // Was to filter out layer commits during capture
 static BOOL capturing; // Am in the middle of capturing
+static BOOL isStreamEnabled = true;
+static float scaleUpFactor = 0.5; // can be remote controlled
 static NSTimeInterval mostRecentScreenUpdate; // last window layer update
 static NSTimeInterval lastCaptureTime; // last time capture was forced
 static NSArray *buffers; // off-screen buffers use in encoding images
@@ -614,11 +612,18 @@ static int frameno; // count of frames captured and transmmitted
 /// @param timestamp Time update to the screen was notified
 /// @param flush force transmission of screen update reguardless of timestamp
 + (void)capture:(NSTimeInterval)timestamp flush:(BOOL)flush {
-    RMDebug(@"capture: %f %f", timestamp, mostRecentScreenUpdate);
+    if(!isStreamEnabled){
+        os_log(OS_LOG_DEFAULT, "Capture: disabled");
+        return;
+    }
+    os_log(OS_LOG_DEFAULT, "Capture now! %f", scaleUpFactor);
+    
+    NSTimeInterval start = REMOTE_NOW;
+    
     UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
-    CGFloat imageScale = *(int *)device.remote.isIPad ? 1. : 2.;
+    CGFloat imageScale = *(int *)device.remote.isIPad ? 1. : scaleUpFactor;
     __block struct _rmframe frame = {REMOTE_NOW,
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
@@ -634,28 +639,22 @@ static int frameno; // count of frames captured and transmmitted
     REMOTE_APPNAME *prevbuff = buffers[frameno&1];
     UIImage *screenshot;
     RMDebug(@"%@, %@ -- %@", buffers, buffer, prevbuff);
-
-//    memset(buffer->buffer, 128, (char *)buffer->buffend - (char *)buffer->buffer);
-
-    // The various ways to capture a screenshot over the years...
+    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush, (REMOTE_NOW-start)*1000., timestamp);
   
     capturing = TRUE;
     RMDebug(@"CAPTURE0");
-    NSTimeInterval start = REMOTE_NOW;
+    
 
-//        extern CGImageRef UIGetScreenImage(void);
-//        CGImageRef screenimage = UIGetScreenImage();
-//        CGContextDrawImage(buffer->cg, CGRectMake(0, 0, screenSize.width, screenSize.height), screenshot);
     CGRect fullBounds = CGRectMake(0, 0,
-                                   screenSize.width * 2,
-                                   screenSize.height * 2);
+                                   screenSize.width * scaleUpFactor,
+                                   screenSize.height * scaleUpFactor);
     UIGraphicsBeginImageContext(fullBounds.size);
     for (UIWindow *window in [UIApplication sharedApplication].windows)
-        if (!window.isHidden)
+        if (!window.isHidden){
             [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
+        }
 
-    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush,
-    (REMOTE_NOW-start)*1000., timestamp);
+    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush, (REMOTE_NOW-start)*1000., timestamp);
 
     screenshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -696,39 +695,10 @@ static int frameno; // count of frames captured and transmmitted
                screenSize:(CGSize)screenSize frame:(struct _rmframe)frame
        buffer:(REMOTE_APPNAME *)buffer prevbuff:(REMOTE_APPNAME *)prevbuff
 {
-        NSData *encoded;
-        if (device.version <= HYBRID_VERSION)
-            encoded = UIImageJPEGRepresentation(screenshot, REMOTE_JPEGQUALITY);
-        else {
-            if (screenshot)
-                CGContextDrawImage(buffer->cg, CGRectMake(0, 0,
-                                screenSize.width, screenSize.height), screenshot.CGImage);
-
-            BOOL blankImage = TRUE;
-            for (const rmpixel_t *curr = buffer->buffer; curr < buffer->buffend; curr++)
-                if (*curr & 0xffffff00) {
-                    blankImage = FALSE;
-                    break;
-                }
-            if (blankImage) {
-                [self performSelector:@selector(queueCapture) withObject:nil afterDelay:0.1];
-                frameno--;
-                return;
-            }
-
-            encoded = lateJoiners ? nil : [buffer subtractAndEncode:prevbuff];
-            NSData *keyframe = [buffer subtractAndEncode:nil];
-            if (lateJoiners || keyframe.length < encoded.length)
-                encoded = keyframe;
-            lateJoiners = FALSE;
-
-            frame.length = (unsigned)encoded.length;
-            if (frame.length <= REMOTE_MINDIFF) {
-                frameno--;
-                return;
-            }
-
-        }
+        NSData *encoded = UIImageJPEGRepresentation(screenshot, REMOTE_JPEGQUALITY);
+      
+    
+        //os_log(OS_LOG_DEFAULT, " frame size: %lu", encoded.length);
 
         for (NSValue *fp in connections) {
             FILE *writeFp = (FILE *)fp.pointerValue;
@@ -753,11 +723,10 @@ static int frameno; // count of frames captured and transmmitted
     struct _rmevent rpevent;
     while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
 
-        RMLog(@"%@ Event: %f %f %d", self,
-              rpevent.touches[0].x, rpevent.touches[0].y, rpevent.phase);
+        RMLog(@"%@ Event: %d (%f %f)", self, rpevent.phase, rpevent.touches[0].x, rpevent.touches[0].y);
 
-        if (rpevent.phase == RMTouchMoved && capturing)
-            continue;
+        //if (rpevent.phase == RMTouchMoved && capturing)
+        //    continue;
 
         NSTimeInterval timestamp = rpevent.timestamp;
 
@@ -792,6 +761,18 @@ static int frameno; // count of frames captured and transmmitted
                 if ([sentText isEqualToString:@"repeato:quit_app"]) {
                     os_log(OS_LOG_DEFAULT, "Remote asked to quit app");
                     exit(0);
+                } else if ([sentText isEqualToString:@"repeato:enable_stream"]) {
+                    os_log(OS_LOG_DEFAULT, "Enable image stream");
+                    isStreamEnabled = TRUE;
+                }else if ([sentText isEqualToString:@"repeato:disable_stream"]) {
+                    os_log(OS_LOG_DEFAULT, "Disable image stream");
+                    isStreamEnabled = FALSE;
+                } else if ([sentText hasPrefix:@"repeato:set_scale_up_factor:"]) {
+                    NSString *scaleUpParam = [sentText stringByReplacingOccurrencesOfString:@"repeato:set_scale_up_factor:" withString:@""];
+                    os_log(OS_LOG_DEFAULT, "Set scale up factor to %{public}@", scaleUpParam);
+                    scaleUpFactor = [scaleUpParam floatValue];
+                    // send a new frame with the requested resolution right away
+                    [self queueCapture];
                 } else {
                     os_log(OS_LOG_DEFAULT, "Insert text");
                     [textField insertText:sentText];
@@ -984,8 +965,8 @@ static int frameno; // count of frames captured and transmmitted
     if (!connections.count)
         return;
 
-    NSTimeInterval timestamp =
-    mostRecentScreenUpdate = REMOTE_NOW;
+    NSTimeInterval timestamp = mostRecentScreenUpdate = REMOTE_NOW;
+    // 1. if a minimum time (REMOTE_MAXDEFER) passed since transmitting the last frame -> schedule flush
     BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
     if (flush)
         lastCaptureTime = timestamp;
@@ -994,19 +975,27 @@ static int frameno; // count of frames captured and transmmitted
         int64_t delta = 0;
         if (!flush) {
             if (timestamp < mostRecentScreenUpdate) {
-                RMBench("Discard 1\n");
+                os_log(OS_LOG_DEFAULT, "Discard 1 flush: %d", flush);
                 return;
             }
             
             delta = (int64_t)(REMOTE_DEFER * NSEC_PER_SEC);
         }
 
+        // 2. wait another x ms (REMOTE_DEFER) to figure out if maybe a newer frame is coming in. In that case, the prev frame is outdated and can be discarded
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
-            RMDebug(@"Capturing? %d %f", flush, mostRecentScreenUpdate);
-            if (timestamp < (flush ? lastCaptureTime : mostRecentScreenUpdate)) {
-                RMBench("Discard 2 %d\n", flush);
-                return;
+            if(flush){
+                if(timestamp < lastCaptureTime){
+                    os_log(OS_LOG_DEFAULT, "timestamp < lastCaptureTime");
+                    return;
+                }
+            }else {
+                if(timestamp < mostRecentScreenUpdate){
+                    os_log(OS_LOG_DEFAULT, "timestamp < mostRecentScreenUpdate");
+                    return;
+                }
             }
+            
             [self capture:timestamp flush:flush];
 //            lastCaptureTime = timestamp;
         });

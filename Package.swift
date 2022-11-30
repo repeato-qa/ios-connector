@@ -7,7 +7,7 @@ import PackageDescription
 import Foundation
 
 let hostname = Host.current().name ?? "localhost"
-NSLog("hoostName: '%s'", hostname)
+
 let package = Package(
     name: "RemotePlugin",
     platforms: [.iOS("10.0"), .macOS("10.12")],
