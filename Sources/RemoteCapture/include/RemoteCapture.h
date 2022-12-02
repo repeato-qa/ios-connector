@@ -394,17 +394,11 @@ static id<RemoteDelegate> remoteDelegate;
 static NSMutableArray<NSValue *> *connections;
 static char *connectionKey;
 
-#ifdef REMOTEPLUGIN_SERVERIPS
-/// Auto-connect
-+ (void)load {
-    [self startCapture:@REMOTEPLUGIN_SERVERIPS];
-}
-#endif
 
 /// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
 + (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
-    scaleUpFactor = s;
+    scaleUpFactor = s == 0 ? 1 : s;
     [UIApplication.sharedApplication setIdleTimerDisabled:true];
     os_log(OS_LOG_DEFAULT, "%@: Start capture at '%{public}@' with scaleUpFactor %{public}f...", self, addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
