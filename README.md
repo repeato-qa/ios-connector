@@ -1,6 +1,6 @@
 # Remote - Control your iPhone via Repeato
 This library allows remote controlling iOS devices / simulators from an automation host. 
-The connector library needs to be embedded into your app and takes care of transmitting and receiving data from [Repeato Studio](https://www.repeato.app) or [Repeato CLI](https://www.npmjs.com/package/@repeato/cli-testrunner).
+This connector library needs to be embedded into your app and takes care of transmitting and receiving data from [Repeato Studio](https://www.repeato.app) or [Repeato CLI](https://www.npmjs.com/package/@repeato/cli-testrunner).
 
 
 # Installation
@@ -22,9 +22,9 @@ The connector library needs to be embedded into your app and takes care of trans
 
 But for the sake of completenes we provide the installation instructions also here (in case you don't have Repeato Studio installed and you are integrating the plugin into the app for someone else). 
 
-**Please make sure your app project is opened in Xcode before proceeding.**
+👉 Please make sure your app project is opened in Xcode before proceeding. 👈
 
-## 2. Add library to "Swift packages" in XCode
+## 2. Add library to "Swift packages" in Xcode
 
 In the screenshot below you can see how we locate the swift packages in the app "MovieSwift" and then click the "+" button:
 
@@ -41,4 +41,4 @@ Select branch "main" for "Dependency rule", then click "Add Package":
 In the next step just click "Add Package" once more.
 
 ## 3. Build an launch app
-That's it. Just build and run your project via XCode on the simulator. Repeato connector will find your Repeato instance, and connect to it.
+That's it. Just build and run your project via Xcode on the simulator. Repeato connector will find your Repeato instance, and connect to it.
