@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "Repeato"
-  s.version      = "2.3.5"
+  s.version      = "1.1.8"
   s.summary      = "Mobile app test automation: Well-known problems and Repeato's solutions"
 
   s.description  = "The mobile app test automation tool for UI testing without coding
