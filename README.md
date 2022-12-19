@@ -42,3 +42,12 @@ In the next step just click "Add Package" once more.
 
 ## 3. Build an launch app
 That's it. Just build and run your project via Xcode on the simulator. Repeato connector will find your Repeato instance, and connect to it.
+
+
+# Release cocoa pod
+
+1. Validate local code via `pod lib lint`
+2. Set version in Repeato.podspec
+3. Sync protocolVersion with tag version
+4. Commit, Tag version and push it
+5. Validate repo via `pod spec lint Repeato.podspec` (Take care: This command is not validating local code it seems. It checks the version in the remote repo)
