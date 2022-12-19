@@ -605,7 +605,7 @@ static int frameno; // count of frames captured and transmmitted
     
     NSTimeInterval start = REMOTE_NOW;
     
-    UIScreen *screen = [UIScreen mainScreen];
+//    UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
     CGFloat imageScale = *(int *)device.remote.isIPad ? 1. : scaleUpFactor;
