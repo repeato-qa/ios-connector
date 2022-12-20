@@ -1,4 +1,4 @@
-# Remote - Control your iPhone via Repeato
+# iOS Connector for Repeato Studio and Repeato CLI
 This library allows remote controlling iOS devices / simulators from an automation host. 
 This connector library needs to be embedded into your app and takes care of transmitting and receiving data from [Repeato Studio](https://www.repeato.app) or [Repeato CLI](https://www.npmjs.com/package/@repeato/cli-testrunner).
 
