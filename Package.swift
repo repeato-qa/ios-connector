@@ -12,13 +12,13 @@ let package = Package(
     name: "RemotePlugin",
     platforms: [.iOS("10.0"), .macOS("10.12")],
     products: [
-        .library(name: "RemoteCapture", targets: ["RemoteCapture"]),
+        .library(name: "RepeatoCapture", targets: ["RepeatoCapture"]),
     ],
     dependencies: [
         .package(url: "https://github.com/bugfender/BugfenderSDK-iOS", from: "1.10.0"),
     ],
     targets: [
-        .target(name: "RemoteCapture",
+        .target(name: "RepeatoCapture",
                 cSettings: [.define("DEVELOPER_HOST",
                                     to: "\"\(hostname)\"")]),
     ]

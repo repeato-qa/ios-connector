@@ -6,68 +6,68 @@
 #import <netdb.h>
 #import <zlib.h>
 
-#import "RemoteHeaders.h"
+#import "RepeatoHeaders.h"
 
-#ifndef REMOTE_PORT
+#ifndef REPEATO_PORT
 #define INJECTION_PORT 31442
 #define APPCODE_PORT 31444
 #define XPROBE_PORT 31448
-#define REMOTE_PORT 31449
+#define REPEATO_PORT 31449
 #endif
 
-#ifndef REMOTE_APPNAME
-#define REMOTE_APPNAME RemoteCapture
+#ifndef REPEATO_APPNAME
+#define REPEATO_APPNAME RepeatoCapture
 #endif
-#define REMOTE_MAGIC -141414141
-#define REMOTE_MINDIFF (4*sizeof(rmencoded_t))
-#define REMOTE_COMPRESSED_OFFSET 1000000000
+#define REPEATO_MAGIC -141414141
+#define REPEATO_MINDIFF (4*sizeof(rmencoded_t))
+#define REPEATO_COMPRESSED_OFFSET 1000000000
 
 // Various wire formats used.
-#define REMOTE_NOKEY 3 // Original format
-#define REMOTE_VERSION 4 // Sends source file path for security check
+#define REPEATO_NOKEY 3 // Original format
+#define REPEATO_VERSION 4 // Sends source file path for security check
 #define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
 #define HYBRID_VERSION 2 // minicap but starting with "Remote" header
 
 // May be used for security
-#define REMOTE_KEY @__FILE__
-#define REMOTE_XOR 0xc5
+#define REPEATO_KEY @__FILE__
+#define REPEATO_XOR 0xc5
 
 // Times coordinate-resolution to capture.
-#ifndef REMOTE_OVERSAMPLE
-#ifndef REMOTE_HYBRID
-#define REMOTE_OVERSAMPLE 1.0
+#ifndef REPEATO_OVERSAMPLE
+#ifndef REPEATO_HYBRID
+#define REPEATO_OVERSAMPLE 1.0
 #else
-#define REMOTE_OVERSAMPLE *(float *)device.remote.scale
+#define REPEATO_OVERSAMPLE *(float *)device.remote.scale
 #endif
 #endif
 
-#ifndef REMOTE_JPEGQUALITY
-#define REMOTE_JPEGQUALITY 0.5
+#ifndef REPEATO_JPEGQUALITY
+#define REPEATO_JPEGQUALITY 0.5
 #endif
 
-#ifndef REMOTE_RETRIES
-#define REMOTE_RETRIES 3
+#ifndef REPEATO_RETRIES
+#define REPEATO_RETRIES 3
 #endif
 
-#ifdef REMOTE_HYBRID
+#ifdef REPEATO_HYBRID
 // Wait for screen to settle before capture
-#ifndef REMOTE_DEFER
-#define REMOTE_DEFER 0.5
+#ifndef REPEATO_DEFER
+#define REPEATO_DEFER 0.5
 #endif
 
 // Only wait this long for screen to settle
-#ifndef REMOTE_MAXDEFER
-#define REMOTE_MAXDEFER 0.1
+#ifndef REPEATO_MAXDEFER
+#define REPEATO_MAXDEFER 0.1
 #endif
 #else
 // Wait for screen to settle before capture
-#ifndef REMOTE_DEFER
-#define REMOTE_DEFER 0.5
+#ifndef REPEATO_DEFER
+#define REPEATO_DEFER 0.5
 #endif
 
 // Only wait this long for screen to settle
-#ifndef REMOTE_MAXDEFER
-#define REMOTE_MAXDEFER 0.1
+#ifndef REPEATO_MAXDEFER
+#define REPEATO_MAXDEFER 0.1
 #endif
 #endif
 
@@ -77,14 +77,14 @@
 #define RMLog while(0) NSLog
 #endif
 
-#ifdef REMOTE_DEBUG
+#ifdef REPEATO_DEBUG
 #define RMDebug NSLog
 #else
 #define RMDebug while(0) NSLog
 #endif
 
-#define REMOTE_NOW [NSDate timeIntervalSinceReferenceDate]
-#ifdef REMOTE_BENCHMARK
+#define REPEATO_NOW [NSDate timeIntervalSinceReferenceDate]
+#ifdef REPEATO_BENCHMARK
 #define RMBench printf
 #else
 #define RMBench while(0) printf
@@ -94,10 +94,10 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <os/log.h>
 
-#ifdef REMOTE_LEGACY
-static BOOL remoteLegacy = TRUE;
+#ifdef REPEATO_LEGACY
+static BOOL repeatoLegacy = TRUE;
 #else
-static BOOL remoteLegacy = FALSE;
+static BOOL repeatoLegacy = FALSE;
 #endif
 
 typedef unsigned rmpixel_t;
@@ -168,22 +168,22 @@ struct _rmevent {
     /* int padded; */
 };
 
-@interface REMOTE_APPNAME: NSObject {
+@interface REPEATO_APPNAME: NSObject {
 @package
     rmpixel_t *buffer, *buffend;
     CGContextRef cg;
 }
 - (instancetype)initFrame:(const struct _rmframe *)frame;
-- (NSData *)subtractAndEncode:(REMOTE_APPNAME *)prevbuff;
+- (NSData *)subtractAndEncode:(REPEATO_APPNAME *)prevbuff;
 - (CGImageRef)cgImage;
 @end
 
-@protocol RemoteDelegate <NSObject>
+@protocol RepeatoDelegate <NSObject>
 @required
 - (void)remoteConnected:(BOOL)status;
 @end
 
-#if defined(REMOTE_IMPL) || \
+#if defined(REPEATO_IMPL) || \
     defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(DEBUG)
 
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
@@ -192,7 +192,7 @@ struct _rmevent {
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
-@interface REMOTE_APPNAME(Client)
+@interface REPEATO_APPNAME(Client)
 + (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s;
 + (void)shutdown;
 @end
@@ -213,7 +213,7 @@ static BOOL lateJoiners;
 
 - (instancetype)init {
     if ((self = [super init])) {
-        _timestamp = REMOTE_NOW - timestamp0;
+        _timestamp = REPEATO_NOW - timestamp0;
     }
     return self;
 }
@@ -291,9 +291,9 @@ static BOOL lateJoiners;
 @end
 #endif
 
-/// The class defined by RemoteCapture is actually a buffer
+/// The class defined by RepeatoCapture is actually a buffer
 /// used to work with the memory representation of screenshots
-@implementation REMOTE_APPNAME
+@implementation REPEATO_APPNAME
 
 - (instancetype)initFrame:(const struct _rmframe *)frame {
     if ((self = [super init])) {
@@ -305,7 +305,7 @@ static BOOL lateJoiners;
                                    (CGBitmapInfo)kCGImageAlphaNoneSkipFirst);
         buffer = (rmpixel_t *)CGBitmapContextGetData(cg);
         buffend = (rmpixel_t *)((char *)buffer + bufferSize);
-        if (remoteLegacy) {
+        if (repeatoLegacy) {
             CGContextTranslateCTM(cg, 0, size.height);
             CGContextScaleCTM(cg, frame->imageScale, -frame->imageScale);
         }
@@ -317,7 +317,7 @@ static BOOL lateJoiners;
 
 /// Made-up image encoding format
 /// @param prevbuff previous image
-- (NSData *)subtractAndEncode:(REMOTE_APPNAME *)prevbuff {
+- (NSData *)subtractAndEncode:(REPEATO_APPNAME *)prevbuff {
     unsigned tmpsize = 64*1024;
     rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize * sizeof *tmp), *end = tmp + tmpsize;
 
@@ -379,7 +379,7 @@ static BOOL lateJoiners;
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
 
-static id<RemoteDelegate> remoteDelegate;
+static id<RepeatoDelegate> repeatoDelegate;
 static NSMutableArray<NSValue *> *connections;
 static char *connectionKey;
 
@@ -402,7 +402,7 @@ static char *connectionKey;
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
         NSString *inaddr = parts[0];
-        in_port_t port = REMOTE_PORT;
+        in_port_t port = REPEATO_PORT;
         if (parts.count > 1)
             port = (in_port_t)parts[1].intValue;
         os_log(OS_LOG_DEFAULT, "%@: Connecting to %@:%d...", self, inaddr, port);
@@ -427,10 +427,10 @@ static char *connectionKey;
         int headerSize = 1 + sizeof device.remote;
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
             os_log(OS_LOG_DEFAULT, "%@: Could not write device info: %s", self, strerror(errno));
-        else if (device.version == REMOTE_VERSION &&
+        else if (device.version == REPEATO_VERSION &&
                  fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
             os_log(OS_LOG_DEFAULT, "%@: Could not write keylen: %s", self, strerror(errno));
-        else if (device.version == REMOTE_VERSION &&
+        else if (device.version == REPEATO_VERSION &&
                  fwrite(connectionKey, 1, keylen, writeFp) != keylen)
             os_log(OS_LOG_DEFAULT, "%@: Could not write key: %s", self, strerror(errno));
         else
@@ -442,7 +442,7 @@ static char *connectionKey;
         [self queueCapture];
         lateJoiners = TRUE;
     });
-    [remoteDelegate remoteConnected:TRUE];
+    [repeatoDelegate remoteConnected:TRUE];
     return TRUE;
 }
 
@@ -482,7 +482,7 @@ static char *connectionKey;
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
         os_log(OS_LOG_DEFAULT, "%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
     else
-        for (int retry = 0; retry<REMOTE_RETRIES; retry++) {
+        for (int retry = 0; retry<REPEATO_RETRIES; retry++) {
             if (retry)
                 [NSThread sleepForTimeInterval:1.0];
             os_log(OS_LOG_DEFAULT, "Try #%d", retry);
@@ -509,12 +509,12 @@ static CGSize bufferSize; // current size of off-screen image buffers
 /// Setup device header struct sent on opening the connection.
 + (void)initCapture {
     connections = [NSMutableArray new];
-    timestamp0 = REMOTE_NOW;
+    timestamp0 = REPEATO_NOW;
     writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
     UIWindowLayer = objc_getClass("UIWindowLayer");
-    connectionKey = strdup(REMOTE_KEY.UTF8String);
+    connectionKey = strdup(REPEATO_KEY.UTF8String);
     for (size_t i=0, keylen = (int)strlen(connectionKey); i<keylen; i++)
-        connectionKey[i] ^= REMOTE_XOR;
+        connectionKey[i] ^= REPEATO_XOR;
 
     __block NSArray<UIScreen *> *screens;
     do {
@@ -542,7 +542,7 @@ static CGSize bufferSize; // current size of off-screen image buffers
     device.version = HYBRID_VERSION;
 
     // prepare remote header
-    *(int *)device.remote.magic = REMOTE_MAGIC;
+    *(int *)device.remote.magic = REPEATO_MAGIC;
 
     size_t size = sizeof device.remote.machine-1;
     sysctlbyname("hw.machine", device.remote.machine, &size, NULL, 0);
@@ -603,13 +603,13 @@ static int frameno; // count of frames captured and transmmitted
     }
     os_log(OS_LOG_DEFAULT, "Capture now! %f", scaleUpFactor);
     
-    NSTimeInterval start = REMOTE_NOW;
+    NSTimeInterval start = REPEATO_NOW;
     
     //UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
     CGFloat imageScale = *(int *)device.remote.isIPad ? 1. : scaleUpFactor;
-    __block struct _rmframe frame = {REMOTE_NOW,
+    __block struct _rmframe frame = {REPEATO_NOW,
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
     if (bufferSize.width != frame.width || bufferSize.height != frame.height) {
@@ -620,11 +620,11 @@ static int frameno; // count of frames captured and transmmitted
         frameno = 0;
     }
 
-    REMOTE_APPNAME *buffer = buffers[frameno++&1];
-    REMOTE_APPNAME *prevbuff = buffers[frameno&1];
+    REPEATO_APPNAME *buffer = buffers[frameno++&1];
+    REPEATO_APPNAME *prevbuff = buffers[frameno&1];
     UIImage *screenshot;
     RMDebug(@"%@, %@ -- %@", buffers, buffer, prevbuff);
-    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush, (REMOTE_NOW-start)*1000., timestamp);
+    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush, (REPEATO_NOW-start)*1000., timestamp);
   
     capturing = TRUE;
     RMDebug(@"CAPTURE0");
@@ -639,7 +639,7 @@ static int frameno; // count of frames captured and transmmitted
             [window drawViewHierarchyInRect:fullBounds afterScreenUpdates:NO];
         }
 
-    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush, (REMOTE_NOW-start)*1000., timestamp);
+    RMBench(" pre Captured #%d(%d), %.1fms %f\n", frameno, flush, (REPEATO_NOW-start)*1000., timestamp);
 
     screenshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -651,7 +651,7 @@ static int frameno; // count of frames captured and transmmitted
     RMDebug(@"CAPTURE2 %@", [UIApplication sharedApplication].windows.lastObject);
     capturing = FALSE;
     RMBench("Captured #%d(%d), %.1fms %f\n", frameno, flush,
-            (REMOTE_NOW-start)*1000., timestamp);
+            (REPEATO_NOW-start)*1000., timestamp);
     
 
     dispatch_async(writeQueue, ^{
@@ -661,7 +661,7 @@ static int frameno; // count of frames captured and transmmitted
             return;
         }
 
-        NSTimeInterval start = REMOTE_NOW;
+        NSTimeInterval start = REPEATO_NOW;
         [self encodeAndTransmit:screenshot screenSize:screenSize
                           frame:frame buffer:buffer prevbuff:prevbuff];
         RMBench("Sent #%d(%d), %.1fms %f\n", frameno, flush, ([NSDate
@@ -678,9 +678,9 @@ static int frameno; // count of frames captured and transmmitted
 /// @param prevbuff Buffer containing previous screenshot to relative encode
 + (void)encodeAndTransmit:(UIImage *)screenshot
                screenSize:(CGSize)screenSize frame:(struct _rmframe)frame
-       buffer:(REMOTE_APPNAME *)buffer prevbuff:(REMOTE_APPNAME *)prevbuff
+       buffer:(REPEATO_APPNAME *)buffer prevbuff:(REPEATO_APPNAME *)prevbuff
 {
-        NSData *encoded = UIImageJPEGRepresentation(screenshot, REMOTE_JPEGQUALITY);
+        NSData *encoded = UIImageJPEGRepresentation(screenshot, REPEATO_JPEGQUALITY);
       
     
         //os_log(OS_LOG_DEFAULT, " frame size: %lu", encoded.length);
@@ -937,7 +937,7 @@ static int frameno; // count of frames captured and transmmitted
 
 /// Stop capturing events
 + (void)shutdown {
-    [remoteDelegate remoteConnected:FALSE];
+    [repeatoDelegate remoteConnected:FALSE];
     for (NSValue *writeFp in connections)
         fclose((FILE *)writeFp.pointerValue);
     connections = nil;
@@ -950,9 +950,9 @@ static int frameno; // count of frames captured and transmmitted
     if (!connections.count)
         return;
 
-    NSTimeInterval timestamp = mostRecentScreenUpdate = REMOTE_NOW;
-    // 1. if a minimum time (REMOTE_MAXDEFER) passed since transmitting the last frame -> schedule flush
-    BOOL flush = timestamp > lastCaptureTime + REMOTE_MAXDEFER;
+    NSTimeInterval timestamp = mostRecentScreenUpdate = REPEATO_NOW;
+    // 1. if a minimum time (REPEATO_MAXDEFER) passed since transmitting the last frame -> schedule flush
+    BOOL flush = timestamp > lastCaptureTime + REPEATO_MAXDEFER;
     if (flush)
         lastCaptureTime = timestamp;
     
@@ -964,10 +964,10 @@ static int frameno; // count of frames captured and transmmitted
                 return;
             }
             
-            delta = (int64_t)(REMOTE_DEFER * NSEC_PER_SEC);
+            delta = (int64_t)(REPEATO_DEFER * NSEC_PER_SEC);
         }
 
-        // 2. wait another x ms (REMOTE_DEFER) to figure out if maybe a newer frame is coming in. In that case, the prev frame is outdated and can be discarded
+        // 2. wait another x ms (REPEATO_DEFER) to figure out if maybe a newer frame is coming in. In that case, the prev frame is outdated and can be discarded
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
             if(flush){
                 if(timestamp < lastCaptureTime){
@@ -989,7 +989,7 @@ static int frameno; // count of frames captured and transmmitted
 
 @end
 
-@implementation CALayer(REMOTE_APPNAME)
+@implementation CALayer(REPEATO_APPNAME)
 
 /// Twp methods that can be swizzled in to generate a stream of notifications the screen has been updated
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2 {
@@ -997,7 +997,7 @@ static int frameno; // count of frames captured and transmmitted
     RMDebug(@"in_copyRenderLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
     if (self.class == UIWindowLayer)
-        [REMOTE_APPNAME queueCapture];
+        [REPEATO_APPNAME queueCapture];
     return out;
 }
 
@@ -1006,12 +1006,12 @@ static int frameno; // count of frames captured and transmmitted
     RMDebug(@"in_didCommitLayer: %d %d %@ %lu", capturing, skipEcho, self,
             (unsigned long)[UIApplication sharedApplication].windows.count);
     if (self.class == UIWindowLayer)
-        [REMOTE_APPNAME queueCapture];
+        [REPEATO_APPNAME queueCapture];
 }
 
 @end
 
-@implementation UIApplication(REMOTE_APPNAME)
+@implementation UIApplication(REPEATO_APPNAME)
 
 /// Swizzled in to capture device events and transmit them to the RemoteUI server
 /// so they can be recorded and played back using processEvents: above.
@@ -1029,7 +1029,7 @@ static int frameno; // count of frames captured and transmmitted
 
 
     struct _rmframe header;
-    header.timestamp = REMOTE_NOW;
+    header.timestamp = REPEATO_NOW;
     header.length = -(int)touches.count;
 
     NSMutableData *out = [NSMutableData new];
@@ -1051,7 +1051,7 @@ static int frameno; // count of frames captured and transmmitted
                 continue;
             FILE *writeFp = (FILE *)fp.pointerValue;
             if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
-                os_log(OS_LOG_DEFAULT, "%@: Could not write event: %s", REMOTE_APPNAME.class, strerror(errno));
+                os_log(OS_LOG_DEFAULT, "%@: Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
             else
                 fflush(writeFp);
         }
