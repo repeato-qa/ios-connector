@@ -1,8 +1,8 @@
 //
-//  RemoteHeaders.h
-//  Remote
+//  RepeatoHeaders.h
+//  Repeato
 //
-//  $Id: //depot/Remote/Sources/RemoteCapture/include/RemoteCapture.h#11 $
+//  $Id: //depot/Remote/Sources/RepeatoCapture/include/RepeatoCapture.h#11 $
 //
 
 #import <Foundation/Foundation.h>

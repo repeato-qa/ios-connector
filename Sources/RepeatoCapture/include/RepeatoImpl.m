@@ -1,23 +1,23 @@
 
-#define REMOTE_HYBRID
+#define REPEATO_HYBRID
 //#define REMOTE_MINICAP
-#define REMOTE_PORT 1313
+#define REPEATO_PORT 1313
 //#define REMOTE_PNGFORMAT
-//#define REMOTE_APPNAME GenericCapture
-#define REMOTE_OVERSAMPLE 2
-#define REMOTE_BENCHMARK
-#define REMOTE_DEFER 0.2
-#define REMOTE_MAXDEFER 0.05
+//#define REPEATO_APPNAME GenericCapture
+#define REPEATO_OVERSAMPLE 2
+#define REPEATO_BENCHMARK
+#define REPEATO_DEFER 0.2
+#define REPEATO_MAXDEFER 0.05
 
-#ifndef DEVELOPER_HOST
-#define DEVELOPER_HOST @"localhost"
-#endif
+//#ifndef DEVELOPER_HOST
+//#define DEVELOPER_HOST @"localhost"
+//#endif
 
-#define REMOTE_IMPL
-#import "RemoteCapture.h"
+#define REPEATO_IMPL
+#import "RepeatoCapture.h"
 
 
-@implementation RemoteCapture(AutoConnect)
+@implementation RepeatoCapture(AutoConnect)
 + (void)load {
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
     os_log(OS_LOG_DEFAULT, "%@: Launch arguments: %{public}@", self, arguments);
@@ -31,8 +31,10 @@
     }
 #endif
     if (hostAddress == NULL) {
-        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}@! Launch arguments: %{public}@", self, DEVELOPER_HOST, arguments);
-        [self startCapture:DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+#ifdef DEVELOPER_HOST
+        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}@! Launch arguments: %{public}@", self, @DEVELOPER_HOST, arguments);
+        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+#endif
     } else {
         //NSString *hostAddress = arguments[index + 1];
         os_log(OS_LOG_DEFAULT, "%@: Host-address: %{public}@!", self, hostAddress);
