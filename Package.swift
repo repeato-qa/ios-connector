@@ -15,7 +15,6 @@ let package = Package(
         .library(name: "RepeatoCapture", targets: ["RepeatoCapture"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/bugfender/BugfenderSDK-iOS", from: "1.10.0"),
     ],
     targets: [
         .target(name: "RepeatoCapture",
