@@ -33,8 +33,8 @@
     if (hostAddress == NULL) {
         os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found. Launch arguments: %{public}@", self, arguments);
 #ifdef DEVELOPER_HOST
-        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}@! ", self, DEVELOPER_HOST);
-        [self startCapture:DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}s! ", self, DEVELOPER_HOST);
+        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
 #endif
     } else {
         os_log(OS_LOG_DEFAULT, "%@: Host-address: %{public}@!", self, hostAddress);
