@@ -9,7 +9,7 @@ import Foundation
 let hostname = Host.current().name ?? "localhost"
 
 let package = Package(
-    name: "RemotePlugin",
+    name: "RepeatoPlugin",
     platforms: [.iOS("10.0"), .macOS("10.12")],
     products: [
         .library(name: "RepeatoCapture", targets: ["RepeatoCapture"]),
