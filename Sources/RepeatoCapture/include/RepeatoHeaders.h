@@ -13,52 +13,7 @@
 typedef CFTypeRef __IOHIDEvent;
 typedef CFTypeRef __GSEvent;
 
-@interface UITouch (FromXprobe) // : NSObject <_UIResponderForwardable> {
-//   double _movementMagnitudeSquared;
-//   long _phase;
-//   unsigned long _tapCount;
-//   long _edgeType;
-//   unsigned long _edgeAim;
-//   unsigned long _precision;
-//   unsigned _touchIdentifier;
-//   UIWindow *_window;
-//   UIView *_view;
-//   UIView *_warpedIntoView;
-//   NSMutableArray *_gestureRecognizers;
-//   NSMutableArray *_forwardingRecord;
-//   CGPoint _locationInWindow;
-//   CGPoint _previousLocationInWindow;
-//   CGPoint _preciseLocationInWindow;
-//   CGPoint _precisePreviousLocationInWindow;
-//   double _previousPressure;
-//   long _pathIndex;
-//   unsigned char _pathIdentity;
-//   double _pathMajorRadius;
-//   double _majorRadiusTolerance;
-//   double _pressure;
-//   double _maxObservedPressure;
-//   float _zGradient;
-//   ?="_firstTouchForView"b1"_isTap"b1"_isDelayed"b1"_sentTouchesEnded"b1"_abandonForwardingRecord"b1"_deliversUpdatesInTouchesMovedIsValid"b1"_deliversUpdatesInTouchesMoved"b1"_isPredictedTouch"b1"_didDispatchAsEnded"b1"_isPointerTouch"b1"_isRestingTouch"b1"_isTapToClick"b1} _touchFlags;
-//   _UITouchPredictor *_touchPredictor;
-//   bool _eaten;
-//   bool _needsForceUpdate;
-//   bool _hasForceUpdate;
-//   unsigned char _forceStage;
-//   bool __expectedToBecomeDrag;
-//   double _timestamp;
-//   long _forceCorrelationToken;
-//   double _maximumPossiblePressure;
-//   unsigned long _senderID;
-//   __IOHIDEvent *_hidEvent;
-//   double _altitudeAngle;
-//   long _type;
-//   id<_UITouchPhaseChangeDelegate> __phaseChangeDelegate;
-//   UIWindow *__windowServerHitTestWindow;
-//   double _azimuthAngleInCADisplay;
-//   double _azimuthAngleInWindow;
-//   double _initialTouchTimestamp;
-//   CGSize _displacement;
-//}
+@interface UITouch (FromXprobe)
 
 @property () long _pathIndex; // Tq,N,S_setPathIndex:,V_pathIndex
 @property () unsigned char _pathIdentity; // TC,N,S_setPathIdentity:,V_pathIdentity

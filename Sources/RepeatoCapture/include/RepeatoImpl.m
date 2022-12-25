@@ -10,7 +10,7 @@
 #define REPEATO_MAXDEFER 0.05
 
 #ifndef DEVELOPER_HOST
-#define DEVELOPER_HOST @"localhost"
+#define DEVELOPER_HOST "localhost"
 #endif
 
 #define REPEATO_IMPL

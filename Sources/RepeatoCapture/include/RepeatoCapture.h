@@ -9,9 +9,9 @@
 #import "RepeatoHeaders.h"
 
 #ifndef REPEATO_PORT
-#define INJECTION_PORT 31442
-#define APPCODE_PORT 31444
-#define XPROBE_PORT 31448
+//#define INJECTION_PORT 31442
+//#define APPCODE_PORT 31444
+//#define XPROBE_PORT 31448
 #define REPEATO_PORT 31449
 #endif
 
@@ -19,13 +19,13 @@
 #define REPEATO_APPNAME RepeatoCapture
 #endif
 #define REPEATO_MAGIC -141414141
-#define REPEATO_MINDIFF (4*sizeof(rmencoded_t))
-#define REPEATO_COMPRESSED_OFFSET 1000000000
+//#define REPEATO_MINDIFF (4*sizeof(rmencoded_t))
+//#define REPEATO_COMPRESSED_OFFSET 1000000000
 
 // Various wire formats used.
-#define REPEATO_NOKEY 3 // Original format
+//#define REPEATO_NOKEY 3 // Original format
 #define REPEATO_VERSION 4 // Sends source file path for security check
-#define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
+//#define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
 #define HYBRID_VERSION 2 // minicap but starting with "Remote" header
 
 // May be used for security
@@ -151,10 +151,10 @@ struct _rmframe {
     int length;
 };
 
-/// If image is compressed, it's uncompressed length is sent
-struct _rmcompress {
-    unsigned bytes; unsigned char data[1];
-};
+///// If image is compressed, it's uncompressed length is sent
+//struct _rmcompress {
+//    unsigned bytes; unsigned char data[1];
+//};
 
 #define RMMAX_TOUCHES 2
 
