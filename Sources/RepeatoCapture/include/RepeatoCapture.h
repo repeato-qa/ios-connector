@@ -7,289 +7,16 @@
 #import <zlib.h>
 
 #import "RepeatoHeaders.h"
-
-#ifndef REPEATO_PORT
-//#define INJECTION_PORT 31442
-//#define APPCODE_PORT 31444
-//#define XPROBE_PORT 31448
-#define REPEATO_PORT 31449
-#endif
-
-#ifndef REPEATO_APPNAME
-#define REPEATO_APPNAME RepeatoCapture
-#endif
-#define REPEATO_MAGIC -141414141
-//#define REPEATO_MINDIFF (4*sizeof(rmencoded_t))
-//#define REPEATO_COMPRESSED_OFFSET 1000000000
-
-// Various wire formats used.
-//#define REPEATO_NOKEY 3 // Original format
-#define REPEATO_VERSION 4 // Sends source file path for security check
-//#define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
-#define HYBRID_VERSION 2 // minicap but starting with "Remote" header
-
-// May be used for security
-#define REPEATO_KEY @__FILE__
-#define REPEATO_XOR 0xc5
-
-// Times coordinate-resolution to capture.
-#ifndef REPEATO_OVERSAMPLE
-#ifndef REPEATO_HYBRID
-#define REPEATO_OVERSAMPLE 1.0
-#else
-#define REPEATO_OVERSAMPLE *(float *)device.remote.scale
-#endif
-#endif
-
-#ifndef REPEATO_JPEGQUALITY
-#define REPEATO_JPEGQUALITY 0.5
-#endif
-
-#ifndef REPEATO_RETRIES
-#define REPEATO_RETRIES 3
-#endif
-
-#ifdef REPEATO_HYBRID
-// Wait for screen to settle before capture
-#ifndef REPEATO_DEFER
-#define REPEATO_DEFER 0.5
-#endif
-
-// Only wait this long for screen to settle
-#ifndef REPEATO_MAXDEFER
-#define REPEATO_MAXDEFER 0.1
-#endif
-#else
-// Wait for screen to settle before capture
-#ifndef REPEATO_DEFER
-#define REPEATO_DEFER 0.5
-#endif
-
-// Only wait this long for screen to settle
-#ifndef REPEATO_MAXDEFER
-#define REPEATO_MAXDEFER 0.1
-#endif
-#endif
-
-#ifdef DEBUG
-#define RMLog NSLog
-#else
-#define RMLog while(0) NSLog
-#endif
-
-#ifdef REPEATO_DEBUG
-#define RMDebug NSLog
-#else
-#define RMDebug while(0) NSLog
-#endif
-
-#define REPEATO_NOW [NSDate timeIntervalSinceReferenceDate]
-#ifdef REPEATO_BENCHMARK
-#define RMBench printf
-#else
-#define RMBench while(0) printf
-#endif
-
+#import "RepeatoConstants.h"
+#import "RepeatoEvents.h"
+#import "RepeatoApplication.h"
+///
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <os/log.h>
 
-#ifdef REPEATO_LEGACY
-static BOOL repeatoLegacy = TRUE;
-#else
-static BOOL repeatoLegacy = FALSE;
-#endif
-
-typedef unsigned rmpixel_t;
-typedef unsigned rmencoded_t;
-
-/// Shaows UITouchPhase enum but available to Appkit code in server.
-typedef NS_ENUM(int, RMTouchPhase) {
-    RMTouchBeganDouble = -1,
-    RMTouchBegan = 0,
-    RMTouchMoved,
-    RMTouchStationary,
-    RMTouchEnded,
-    RMTouchCancelled,
-    RMTouchUseScale,
-    RMTouchRegionEntered,
-    RMTouchRegionMoved,
-    RMTouchRegionExited,
-    RMTouchInsertText = 100
-};
-
-/// struct sent from client when it connects to rendering server
-/// Can be either original Remote format or "minicap".
-struct _rmdevice {
-    char version;
-    union {
-        struct {
-            char machine[24];
-            char appname[64];
-            char appvers[24];
-            char hostname[63];
-            char scale[4]; // float
-            char isIPad[4]; // int
-            char protocolVersion[4];// int
-            char displaySize[12]; // 9999x9999
-            char expansion[48];
-            char magic[4]; // int
-        } remote;
-    };
-};
-
-/// struct send before each iage frame sen to render server
-struct _rmframe {
-    NSTimeInterval timestamp;
-    union {
-        /// image paramters
-        struct { float width, height, imageScale; };
-        /// If length < 0, retails of a recorded touch
-        struct { float x, y; RMTouchPhase phase; };
-    };
-    /// length of image data or if < 0 -touch number
-    int length;
-};
-
-///// If image is compressed, it's uncompressed length is sent
-//struct _rmcompress {
-//    unsigned bytes; unsigned char data[1];
-//};
-
-#define RMMAX_TOUCHES 2
-
-/// Struct sent from UI of server to replay touches in the client
-struct _rmevent {
-    NSTimeInterval timestamp;
-    RMTouchPhase phase;
-    union {
-        struct { float x, y; } touches[RMMAX_TOUCHES];
-    };
-    /* int padded; */
-};
-
-@interface REPEATO_APPNAME: NSObject {
-@package
-    rmpixel_t *buffer, *buffend;
-    CGContextRef cg;
-}
-- (instancetype)initFrame:(const struct _rmframe *)frame;
-- (NSData *)subtractAndEncode:(REPEATO_APPNAME *)prevbuff;
-- (CGImageRef)cgImage;
-@end
-
-@protocol RepeatoDelegate <NSObject>
-@required
-- (void)remoteConnected:(BOOL)status;
-@end
-
 #if defined(REPEATO_IMPL) || \
     defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(DEBUG)
-
-#ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
-#import <Cocoa/Cocoa.h>
-#else
-#import <UIKit/UIKit.h>
-#import <objc/runtime.h>
-
-@interface REPEATO_APPNAME(Client)
-+ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s;
-+ (void)shutdown;
-@end
-
-static NSTimeInterval timestamp0;
-static UITouch *currentTouch;
-static NSSet *currentTouches;
-static BOOL lateJoiners;
-
-@interface RCFakeEvent: UIEvent {
-@public
-    NSTimeInterval _timestamp;
-}
-
-@end
-
-@implementation RCFakeEvent
-
-- (instancetype)init {
-    if ((self = [super init])) {
-        _timestamp = REPEATO_NOW - timestamp0;
-    }
-    return self;
-}
-
-- (NSTimeInterval)timestamp {
-    return _timestamp;
-}
-
-- (UITouch *)_firstTouchForView:(UIView *)view {
-    RMDebug(@"_firstTouchForView: %@", view);
-    return currentTouch;
-}
-
-- (NSSet *)touchesForView:(UIView *)view {
-    RMDebug(@"touchesForWindow:%@", view);
-    return currentTouches;
-}
-
-- (NSSet *)touchesForWindow:(UIWindow *)window {
-    RMDebug(@"touchesForWindow:%@", window);
-    return currentTouches;
-}
-
-- (NSSet *)touchesForGestureRecognizer:(UIGestureRecognizer *)rec {
-    RMDebug(@"touchesForGestureRecognizer:%@", rec);
-    return currentTouches;
-}
-
-- (void)_removeTouch:(UITouch *)touch fromGestureRecognizer:(UIGestureRecognizer *)rec {
-    RMDebug(@"_removeTouch:%@ fromGestureRecognizer:%@", touch, rec);
-}
-
-- (NSSet *)allTouches {
-    return currentTouches;
-}
-
-- (void)_addWindowAwaitingLatentSystemGestureNotification:(id)a0 deliveredToEventWindow:(id)a1 {
-    RMDebug(@"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1);
-}
-
-- (NSUInteger)_buttonMask {
-    return 0;
-}
-
-- (UIEventType)type {
-    return (UIEventType)0;
-}
-
-@end
-
-@interface UIView(Description)
-- (NSString *)recursiveDescription;
-@end
-
-@interface NSObject(ForwardReference)
-
-- (void *)_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2;
-- (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2;
-
-- (void)_didCommitLayer:(void *)a0;
-- (void)in_didCommitLayer:(void *)a0;
-
-@end
-
-@interface UIApplication(ForwardReference)
-- (void)in_sendEvent:(UIEvent *)event;
-@end
-@implementation UITouch(Identifier)
-- (void)_setTouchIdentifier:(unsigned int)ident {
-    Ivar ivar = class_getInstanceVariable([self class], "_touchIdentifier");
-    ptrdiff_t offset = ivar_getOffset(ivar);
-    unsigned *iptr = (unsigned *)((char *)(__bridge void *)self + offset);
-    *iptr = ident;
-}
-@end
-#endif
 
 /// The class defined by RepeatoCapture is actually a buffer
 /// used to work with the memory representation of screenshots
@@ -378,11 +105,6 @@ static BOOL lateJoiners;
 }
 
 #ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-
-static id<RepeatoDelegate> repeatoDelegate;
-static NSMutableArray<NSValue *> *connections;
-static char *connectionKey;
-
 
 /// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
@@ -497,13 +219,6 @@ static char *connectionKey;
     return 0;
 }
 
-static dispatch_queue_t writeQueue; // queue to synchronise outgoing writes
-static struct _rmdevice device; // header sent to RemoteUI server on connect
-static NSValue *inhibitEcho; // prevent events from server going back to server
-static Class UIWindowLayer; // Use to filter for full window layer updates
-static UITouch *realTouch; // An actual UITouch recycled for forging events
-static CGSize bufferSize; // current size of off-screen image buffers
-
 /// Initialse static viables for capture an swizzle in replacement
 /// methods for intercepting screen updates and device events
 /// Setup device header struct sent on opening the connection.
@@ -566,15 +281,6 @@ static CGSize bufferSize; // current size of off-screen image buffers
     
     
 }
-
-static int skipEcho; // Was to filter out layer commits during capture
-static BOOL capturing; // Am in the middle of capturing
-static BOOL isStreamEnabled = true;
-static float scaleUpFactor = 0.5; // can be remote controlled
-static NSTimeInterval mostRecentScreenUpdate; // last window layer update
-static NSTimeInterval lastCaptureTime; // last time capture was forced
-static NSArray *buffers; // off-screen buffers use in encoding images
-static int frameno; // count of frames captured and transmmitted
 
 /// Best effeort to get screen dimensions, even for iOS on M1 Mac
 + (CGRect)screenBounds {
@@ -1008,56 +714,6 @@ static int frameno; // count of frames captured and transmmitted
     if (self.class == UIWindowLayer)
         [REPEATO_APPNAME queueCapture];
 }
-
-@end
-
-@implementation UIApplication(REPEATO_APPNAME)
-
-/// Swizzled in to capture device events and transmit them to the RemoteUI server
-/// so they can be recorded and played back using processEvents: above.
-/// Events encoded as a fake frame with negative length rather than image & size.
-/// @param anEvent actual UIEvent which contains the UITouches
-- (void)in_sendEvent:(UIEvent *)anEvent {
-    [self in_sendEvent:anEvent];
-    NSSet *touches = anEvent.allTouches;
-    NSValue *incomingFp = inhibitEcho;
-    realTouch = touches.anyObject;
-
-//    RMLog(@"%@", anEvent);
-//    for (UITouch *t in touches)
-//        RMLog(@"Gestures: %@", t.gestureRecognizers);
-
-
-    struct _rmframe header;
-    header.timestamp = REPEATO_NOW;
-    header.length = -(int)touches.count;
-
-    NSMutableData *out = [NSMutableData new];
-    if (device.version <= HYBRID_VERSION)
-        [out appendBytes:&header.length length:sizeof header.length];
-
-    for (UITouch *touch in touches) {
-        CGPoint loc = [touch locationInView:touch.window];
-        header.phase = (RMTouchPhase)touch.phase;
-        header.x = loc.x;
-        header.y = loc.y;
-        [out appendBytes:&header length:sizeof header];
-        header.length++;
-    }
-
-    dispatch_async(writeQueue, ^{
-        for (NSValue *fp in connections) {
-            if (fp == incomingFp)
-                continue;
-            FILE *writeFp = (FILE *)fp.pointerValue;
-            if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
-                os_log(OS_LOG_DEFAULT, "%@: Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
-            else
-                fflush(writeFp);
-        }
-    });
-}
-
 #endif
 @end
 #endif

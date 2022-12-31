@@ -20,6 +20,10 @@
 		784F0B27295164B400CEB6E1 /* RepeatoImpl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RepeatoImpl.m; sourceTree = "<group>"; };
 		784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoHeaders.h; sourceTree = "<group>"; };
 		784F0B29295164B400CEB6E1 /* RepeatoCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoCapture.h; sourceTree = "<group>"; };
+		788AB515295F02EC00959A21 /* RepeatoConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RepeatoConstants.h; sourceTree = "<group>"; };
+		788AB516295F02EC00959A21 /* RepeatoApplication.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RepeatoApplication.m; sourceTree = "<group>"; };
+		788AB517295F096A00959A21 /* RepeatoApplication.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RepeatoApplication.h; sourceTree = "<group>"; };
+		788AB518295F096A00959A21 /* RepeatoEvents.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RepeatoEvents.h; sourceTree = "<group>"; };
 		78BB92CD292B2D12007DFB57 /* Repeato.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Repeato.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		78BB92D0292B2D12007DFB57 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78BB92D2292B2D12007DFB57 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -60,9 +64,13 @@
 		784F0B26295164B400CEB6E1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				788AB515295F02EC00959A21 /* RepeatoConstants.h */,
 				784F0B27295164B400CEB6E1 /* RepeatoImpl.m */,
 				784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */,
 				784F0B29295164B400CEB6E1 /* RepeatoCapture.h */,
+				788AB517295F096A00959A21 /* RepeatoApplication.h */,
+				788AB516295F02EC00959A21 /* RepeatoApplication.m */,
+				788AB518295F096A00959A21 /* RepeatoEvents.h */,
 			);
 			path = include;
 			sourceTree = "<group>";
