@@ -743,7 +743,15 @@ static int frameno; // count of frames captured and transmmitted
             fakeEvent->_timestamp = timestamp;
 
             if (sentText) {
-                if ([sentText isEqualToString:@"repeato:quit_app"]) {
+                if ([sentText isEqualToString:@"repeato:clear_text"]){
+                    os_log(OS_LOG_DEFAULT, "Remote asked to clear text");
+                    [textField setText:@""];
+                }
+                else if ([sentText isEqualToString:@"repeato:backspace"]) {
+                    os_log(OS_LOG_DEFAULT, "Remote asked to remove last letter");
+                    [textField deleteBackward];
+                }
+                else if ([sentText isEqualToString:@"repeato:quit_app"]) {
                     os_log(OS_LOG_DEFAULT, "Remote asked to quit app");
                     exit(0);
                 } else if ([sentText isEqualToString:@"repeato:enable_stream"]) {
