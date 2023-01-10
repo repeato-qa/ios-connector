@@ -90,6 +90,8 @@
 #define RMBench while(0) printf
 #endif
 
+#define reconnectInterval 10
+
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <os/log.h>
@@ -201,6 +203,9 @@ static NSTimeInterval timestamp0;
 static UITouch *currentTouch;
 static NSSet *currentTouches;
 static BOOL lateJoiners;
+static FILE *readFp;
+static NSTimer *timer;
+static NSString *lastConnectionName;
 
 @interface RCFakeEvent: UIEvent {
 @public
@@ -387,11 +392,13 @@ static char *connectionKey;
 /// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
 + (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
+    lastConnectionName = addrs;
     scaleUpFactor = s == 0 ? 1 : s;
     [UIApplication.sharedApplication setIdleTimerDisabled:true];
     os_log(OS_LOG_DEFAULT, "%@: Start capture at '%{public}@' with scaleUpFactor %{public}f...", self, addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
+    [self reconnectionHandler];
 }
 
 /// Connect in the backgrand rather than hold application up.
@@ -700,11 +707,33 @@ static int frameno; // count of frames captured and transmmitted
         }
 }
 
++(void) reconnectionHandler {
+    os_log(OS_LOG_DEFAULT, "%@: Adding reconnect handler", self);
+    if (timer != nil) {
+        [timer invalidate];
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+       timer = [NSTimer scheduledTimerWithTimeInterval:reconnectInterval
+                                               repeats:YES
+                                                 block:^(NSTimer * _Nonnull timer) {
+           
+           if(readFp) {
+//               os_log(OS_LOG_DEFAULT, "%@: already connected", self);
+           }else {
+               os_log(OS_LOG_DEFAULT, "%@: clear previous connections", self);
+               [self shutdown];
+               os_log(OS_LOG_DEFAULT, "%@: reconnecting...", self);
+               [self performSelectorInBackground:@selector(backgroundConnect:)
+                                      withObject:lastConnectionName];
+           }
+       }];
+    });
+}
+
 /// Run in backgrount to process event structs coming from user interface in order to forge them
 /// @param writeFp Connection to RemoteUI server
 + (void)processEvents:(NSValue *)writeFp {
-    FILE *readFp = fdopen(fileno((FILE *)writeFp.pointerValue), "r");
-
+    readFp = fdopen(fileno((FILE *)writeFp.pointerValue), "r");
     struct _rmevent rpevent;
     while (fread(&rpevent, 1, sizeof rpevent, readFp) == sizeof rpevent) {
 
@@ -936,7 +965,7 @@ static int frameno; // count of frames captured and transmmitted
 
     os_log(OS_LOG_DEFAULT, "%@: processEvents: exits", self);
     fclose(readFp);
-
+    readFp = nil;
     [connections removeObject:writeFp];
     fclose((FILE *)writeFp.pointerValue);
     if (!connections.count)
