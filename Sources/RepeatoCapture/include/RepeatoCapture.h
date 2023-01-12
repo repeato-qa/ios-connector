@@ -394,7 +394,9 @@ static char *connectionKey;
 + (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
     lastConnectionName = addrs;
     scaleUpFactor = s == 0 ? 1 : s;
-    [UIApplication.sharedApplication setIdleTimerDisabled:true];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIApplication.sharedApplication setIdleTimerDisabled:true];
+    });
     os_log(OS_LOG_DEFAULT, "%@: Start capture at '%{public}@' with scaleUpFactor %{public}f...", self, addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
