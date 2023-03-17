@@ -9,6 +9,7 @@
 #import <dns_sd.h>
 #import <dns_util.h>
 #import <stdlib.h>
+#import <os/log.h>
 
 @implementation MdnsHandler
 + (instancetype)shared {
@@ -28,22 +29,23 @@
     DNSServiceErrorType error = DNSServiceResolve(&serviceRef, 0, 0, [name UTF8String], [type UTF8String], [domain UTF8String], callback, (__bridge void *)(self));
     if (error == kDNSServiceErr_NoError) {
         // Start the service
+        os_log(OS_LOG_DEFAULT, "%@: Start MDNS service", self);
         DNSServiceProcessResult(serviceRef);
     } else {
-        NSLog(@"MDNS|Error resolving service: %d", error);
+        os_log(OS_LOG_DEFAULT, "%@: Error resolving service: %d", self, error);
     }
 }
 
 static void callback(DNSServiceRef serviceRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType error, const char *fullname, const char *hosttarget, uint16_t port, uint16_t txtLen, const unsigned char *txtRecord, void *context) {
     if (error == kDNSServiceErr_NoError) {
         // Handle the resolved service
-        NSLog(@"MDNS|Resolved service: %s", txtRecord );
+        os_log(OS_LOG_DEFAULT, "MDNS|Resolved service: %s", txtRecord);
         NSString * hostInfo = [NSString stringWithFormat:@"%s", txtRecord];
         NSDictionary *dic = [NSDictionary dictionaryWithObject:hostInfo forKey:@"ip"];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"hostInfo"
                                                             object:NULL userInfo:dic];
     } else {
-        NSLog(@"MDNS|Error resolving service: %d", error);
+        os_log(OS_LOG_DEFAULT, "MDNS|Error resolving service: %d", error);
     }
 }
 
