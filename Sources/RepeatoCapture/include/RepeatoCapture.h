@@ -388,7 +388,9 @@ static char *connectionKey;
 /// @param addrs space separated list of IPV4 addresses or hostnames
 + (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
     scaleUpFactor = s == 0 ? 1 : s;
-    [UIApplication.sharedApplication setIdleTimerDisabled:true];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIApplication.sharedApplication setIdleTimerDisabled:true];
+    });
     os_log(OS_LOG_DEFAULT, "%@: Start capture at '%{public}@' with scaleUpFactor %{public}f...", self, addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];

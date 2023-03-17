@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		78256FDB29C42362004110A0 /* MdnsHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 78256FDA29C42362004110A0 /* MdnsHandler.m */; };
 		784F0B2B295164B400CEB6E1 /* RepeatoImpl.m in Sources */ = {isa = PBXBuildFile; fileRef = 784F0B27295164B400CEB6E1 /* RepeatoImpl.m */; };
 		78BB92D1292B2D12007DFB57 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB92D0292B2D12007DFB57 /* AppDelegate.swift */; };
 		78BB92D3292B2D12007DFB57 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB92D2292B2D12007DFB57 /* SceneDelegate.swift */; };
@@ -17,6 +18,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		78256FD929C42362004110A0 /* MdnsHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MdnsHandler.h; sourceTree = "<group>"; };
+		78256FDA29C42362004110A0 /* MdnsHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MdnsHandler.m; sourceTree = "<group>"; };
 		784F0B27295164B400CEB6E1 /* RepeatoImpl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RepeatoImpl.m; sourceTree = "<group>"; };
 		784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoHeaders.h; sourceTree = "<group>"; };
 		784F0B29295164B400CEB6E1 /* RepeatoCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoCapture.h; sourceTree = "<group>"; };
@@ -41,6 +44,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		78256FD829C42353004110A0 /* MdnsHandler */ = {
+			isa = PBXGroup;
+			children = (
+				78256FD929C42362004110A0 /* MdnsHandler.h */,
+				78256FDA29C42362004110A0 /* MdnsHandler.m */,
+			);
+			path = MdnsHandler;
+			sourceTree = "<group>";
+		};
 		784F0B24295164B400CEB6E1 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -52,6 +64,7 @@
 		784F0B25295164B400CEB6E1 /* RepeatoCapture */ = {
 			isa = PBXGroup;
 			children = (
+				78256FD829C42353004110A0 /* MdnsHandler */,
 				784F0B26295164B400CEB6E1 /* include */,
 			);
 			path = RepeatoCapture;
@@ -172,6 +185,7 @@
 			files = (
 				78BB92D5292B2D12007DFB57 /* ViewController.swift in Sources */,
 				784F0B2B295164B400CEB6E1 /* RepeatoImpl.m in Sources */,
+				78256FDB29C42362004110A0 /* MdnsHandler.m in Sources */,
 				78BB92D1292B2D12007DFB57 /* AppDelegate.swift in Sources */,
 				78BB92D3292B2D12007DFB57 /* SceneDelegate.swift in Sources */,
 			);

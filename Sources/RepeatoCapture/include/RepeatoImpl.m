@@ -15,7 +15,7 @@
 
 #define REPEATO_IMPL
 #import "RepeatoCapture.h"
-
+#import "MdnsHandler.h"
 
 @implementation RepeatoCapture(AutoConnect)
 + (void)load {
@@ -27,19 +27,35 @@
 #if TARGET_IPHONE_SIMULATOR
     // on simulators we fall back to localhost, since the DEVELOPER_HOST (Host.current().name) turned out to be slightly unreliable
     if (hostAddress == NULL) {
-        hostAddress = @"localhost";
+//        hostAddress = @"localhost";
     }
 #endif
     if (hostAddress == NULL) {
         os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found. Launch arguments: %{public}@", self, arguments);
-#ifdef DEVELOPER_HOST
-        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}s! ", self, DEVELOPER_HOST);
-        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
-#endif
+        //MSDN discovery
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(receiveMDNSNotification:)
+                                                     name:@"hostInfo"
+                                                   object:nil];
+        [[MdnsHandler shared] startSearchingForServices];
+//#ifdef DEVELOPER_HOST
+//        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}s! ", self, DEVELOPER_HOST);
+//        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+//#endif
     } else {
         os_log(OS_LOG_DEFAULT, "%@: Host-address: %{public}@!", self, hostAddress);
         [self startCapture:hostAddress scaleUpFactor:scaleUpFactor];
     }
-    
+}
+
++ (void) receiveMDNSNotification:(NSNotification *) notification {
+    if ([[notification name] isEqualToString:@"hostInfo"]) {
+        NSDictionary *userInfo = notification.userInfo;
+        NSString *hostAddress = [userInfo objectForKey:@"ip"];
+        os_log(OS_LOG_DEFAULT, "%@: Successfully received the host ip Address %@", self, hostAddress);
+        os_log(OS_LOG_DEFAULT, "%@: Going to start capture", self);
+        float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
+        [self startCapture:hostAddress scaleUpFactor:scaleUpFactor];
+    }
 }
 @end
