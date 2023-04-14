@@ -13,7 +13,7 @@ Create robust UI tests for iOS and Android apps. Automate tedious mobile app tes
   s.social_media_url   = "https://twitter.com/repeato_testing"
   s.platform     = :ios, "12.0"
   s.source       = { :git => "https://github.com/repeato-qa/ios-connector.git", :tag => "#{s.version}" }
-  s.source_files = "Sources/RepeatoCapture/include/**/*.{swift,h,m,xcdatamodeld,xib,storyboard,xcassets,json}"
+  s.source_files = "Sources/RepeatoCapture/**/*.{swift,h,m,xcdatamodeld,xib,storyboard,xcassets,json}"
   s.framework =  "UIKit"
   s.framework =  "Foundation"
 end

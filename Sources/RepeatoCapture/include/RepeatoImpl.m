@@ -15,7 +15,7 @@
 
 #define REPEATO_IMPL
 #import "RepeatoCapture.h"
-#import "MdnsHandler.h"
+#import "../MdnsHandler/MdnsHandler.h"
 
 @implementation RepeatoCapture(AutoConnect)
 + (void)load {
