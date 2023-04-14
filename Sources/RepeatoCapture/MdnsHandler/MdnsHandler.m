@@ -39,8 +39,9 @@
 static void callback(DNSServiceRef serviceRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType error, const char *fullname, const char *hosttarget, uint16_t port, uint16_t txtLen, const unsigned char *txtRecord, void *context) {
     if (error == kDNSServiceErr_NoError) {
         // Handle the resolved service
-        os_log(OS_LOG_DEFAULT, "MDNS|Resolved service: %s", txtRecord);
-        NSString * hostInfo = [NSString stringWithFormat:@"%s", txtRecord];
+        NSString* hostInfo = [NSString stringWithFormat:@"%s", txtRecord];
+        hostInfo = [[hostInfo componentsSeparatedByString:@"="] lastObject];
+        os_log(OS_LOG_DEFAULT, "MDNS|Resolved service: Host ip %@", hostInfo);
         NSDictionary *dic = [NSDictionary dictionaryWithObject:hostInfo forKey:@"ip"];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"hostInfo"
                                                             object:NULL userInfo:dic];
