@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		784F0B2B295164B400CEB6E1 /* RepeatoImpl.m in Sources */ = {isa = PBXBuildFile; fileRef = 784F0B27295164B400CEB6E1 /* RepeatoImpl.m */; };
+		78A32F2929EDE36800CC4B6C /* InfoMessages.h in Sources */ = {isa = PBXBuildFile; fileRef = 78A32F2829EDE36800CC4B6C /* InfoMessages.h */; };
 		78BB92D1292B2D12007DFB57 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB92D0292B2D12007DFB57 /* AppDelegate.swift */; };
 		78BB92D3292B2D12007DFB57 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB92D2292B2D12007DFB57 /* SceneDelegate.swift */; };
 		78BB92D5292B2D12007DFB57 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB92D4292B2D12007DFB57 /* ViewController.swift */; };
@@ -20,6 +21,7 @@
 		784F0B27295164B400CEB6E1 /* RepeatoImpl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RepeatoImpl.m; sourceTree = "<group>"; };
 		784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoHeaders.h; sourceTree = "<group>"; };
 		784F0B29295164B400CEB6E1 /* RepeatoCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoCapture.h; sourceTree = "<group>"; };
+		78A32F2829EDE36800CC4B6C /* InfoMessages.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InfoMessages.h; sourceTree = "<group>"; };
 		78BB92CD292B2D12007DFB57 /* Repeato.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Repeato.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		78BB92D0292B2D12007DFB57 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78BB92D2292B2D12007DFB57 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -63,6 +65,7 @@
 				784F0B27295164B400CEB6E1 /* RepeatoImpl.m */,
 				784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */,
 				784F0B29295164B400CEB6E1 /* RepeatoCapture.h */,
+				78A32F2829EDE36800CC4B6C /* InfoMessages.h */,
 			);
 			path = include;
 			sourceTree = "<group>";
@@ -174,6 +177,7 @@
 				784F0B2B295164B400CEB6E1 /* RepeatoImpl.m in Sources */,
 				78BB92D1292B2D12007DFB57 /* AppDelegate.swift in Sources */,
 				78BB92D3292B2D12007DFB57 /* SceneDelegate.swift in Sources */,
+				78A32F2929EDE36800CC4B6C /* InfoMessages.h in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

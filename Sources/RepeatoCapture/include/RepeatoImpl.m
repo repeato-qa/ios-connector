@@ -15,7 +15,7 @@
 
 #define REPEATO_IMPL
 #import "RepeatoCapture.h"
-
+#import "InfoMessages.h"
 
 @implementation RepeatoCapture(AutoConnect)
 + (void)load {
@@ -32,13 +32,17 @@
 #endif
     if (hostAddress == NULL) {
         os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found. Launch arguments: %{public}@", self, arguments);
-#ifdef DEVELOPER_HOST
-        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}s! ", self, DEVELOPER_HOST);
-        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
-#endif
+//        #ifdef DEVELOPER_HOST
+//        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}s! ", self, DEVELOPER_HOST);
+//        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+//        #endif
+        
+        [InfoMessages noLaunchArgumentsPassed];
+
     } else {
         os_log(OS_LOG_DEFAULT, "%@: Host-address: %{public}@!", self, hostAddress);
         [self startCapture:hostAddress scaleUpFactor:scaleUpFactor];
+        [InfoMessages launchArgumentPassed:hostAddress];
     }
     
 }

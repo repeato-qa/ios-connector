@@ -7,6 +7,7 @@
 #import <zlib.h>
 
 #import "RepeatoHeaders.h"
+#import "InfoMessages.h"
 
 #ifndef REPEATO_PORT
 //#define INJECTION_PORT 31442
@@ -488,12 +489,21 @@ static char *connectionKey;
             os_log(OS_LOG_DEFAULT, "Try #%d", retry);
             if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
                 os_log(OS_LOG_DEFAULT, "Connected!");
+                [InfoMessages showToast:@"Repeato"
+                                message:@"Connected successfully"
+                                hideAfterDelay:2];
                 return remoteSocket;
             }
         }
 
     os_log(OS_LOG_DEFAULT, "%@: Could not connect: %s", self, strerror(errno));
     close(remoteSocket);
+    
+//    [InfoMessages dismiss];
+    NSString *message = [NSString stringWithFormat:@"%s", strerror(errno)];
+    [InfoMessages showToast:@"Failed to connect"
+                    message:message
+                    hideAfterDelay:3];
     return 0;
 }
 
@@ -941,6 +951,9 @@ static int frameno; // count of frames captured and transmmitted
     fclose((FILE *)writeFp.pointerValue);
     if (!connections.count)
         [self shutdown];
+    [InfoMessages showToast:@"Disconnected"
+                    message:@"Connection to Repeato is lost"
+                    hideAfterDelay:2];
 }
 
 /// Stop capturing events
