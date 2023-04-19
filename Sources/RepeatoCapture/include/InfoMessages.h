@@ -15,6 +15,7 @@
 #define REPEATO_INFO_ALERT_INTERNAL_PADDING 8
 #define REPEATO_INFO_ALERT_TITLE_FONT 18
 #define REPEATO_INFO_ALERT_FONT 16
+#define REPEATO_INFO_RETRY_LIMIT 3
 
 static BOOL hasCancelledTestOperation = FALSE;
 
@@ -29,12 +30,14 @@ NS_ASSUME_NONNULL_BEGIN
 +(instancetype)shared;
 -(void) showAlert;
 -(void) noLaunchArgumentsPassed;
+-(void) onConnect;
 @end
 
 @implementation InfoMessages
 UIView *alertContainer;
 int seconds = 0;
 NSString *logsHistory = @"";
+int alertRetryPresentationCount = 0;
 
 + (instancetype)shared {
     static id instance;
@@ -92,6 +95,8 @@ NSString *logsHistory = @"";
 
 -(void) dismiss {
     [self stopTimer];
+    Logger.shared.delegate = nil;
+    alertRetryPresentationCount = 0;
     dispatch_async(dispatch_get_main_queue(), ^{
         [alertContainer removeFromSuperview];
         UIViewController *topVC = [[[UIApplication sharedApplication] keyWindow] rootViewController];
@@ -100,8 +105,8 @@ NSString *logsHistory = @"";
     });
 }
 
--(void) launchArgumentPassed:(NSString *) hostIP {
-//    Log(self,@"Launch arguments given %@", h);
+-(void) onConnect{
+    [self dismiss];
 }
 
 -(void) noLaunchArgumentsPassed {
@@ -114,16 +119,27 @@ NSString *logsHistory = @"";
     });
 }
 
+-(void) retryPresentingAlert:(int) delay {
+    if(alertRetryPresentationCount > REPEATO_INFO_RETRY_LIMIT) {
+        return;
+    }
+    // Delay execution of block for x seconds.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                 delay * NSEC_PER_SEC),
+                   dispatch_get_main_queue(), ^{
+        [self setupAlertUI];
+    });
 
+}
 #pragma mark Setup Custom Alert View
 -(void) setupAlertUI  {
     CGFloat screenHeight = 300;//([UIScreen.mainScreen bounds].size.width / 2); //- 120;
     
     UIViewController *topVC = [[[UIApplication sharedApplication] keyWindow] rootViewController];
     if(topVC == nil) {
+        [self retryPresentingAlert:1];
         return;
     }
-//    [self dismiss];
     float padding = REPEATO_INFO_ALERT_PADDING;
     //container view
     alertContainer = [[UIView alloc] init];
@@ -190,8 +206,14 @@ NSString *logsHistory = @"";
     
     UIButton *closeButton = [[UIButton alloc] init];
     [closeButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    [closeButton setFont:[UIFont boldSystemFontOfSize:REPEATO_INFO_ALERT_TITLE_FONT]];
-    [closeButton setTitle:@"X" forState:UIControlStateNormal];
+    [closeButton setTintColor:[UIColor blackColor]];
+    [closeButton setFont:[UIFont systemFontOfSize:REPEATO_INFO_ALERT_TITLE_FONT]];
+    UIImage *closeIcon = [self closeButtonIcon];
+    if(closeIcon != nil) {
+        [closeButton setImage:closeIcon forState:UIControlStateNormal];
+    }else {
+        [closeButton setTitle:@"X" forState:UIControlStateNormal];
+    }
     [closeButton.heightAnchor constraintEqualToConstant:40].active = true;
     [closeButton.widthAnchor constraintEqualToConstant:40].active = true;
     closeButton.translatesAutoresizingMaskIntoConstraints = false;
@@ -206,12 +228,27 @@ NSString *logsHistory = @"";
     stackView.alignment = UIStackViewAlignmentCenter;
     stackView.spacing = 5;
     
-    
     [stackView addArrangedSubview:title];
 //    [stackView addArrangedSubview:minimizedButton];
     [stackView addArrangedSubview:closeButton];
     stackView.translatesAutoresizingMaskIntoConstraints = false;
     return stackView;
+}
+
+-(UIImage *) closeButtonIcon {
+
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:25
+                                                                                             weight:UIImageSymbolWeightRegular
+                                                                                              scale:UIImageSymbolScaleLarge];
+        
+        UIImage *image = [UIImage systemImageNamed:@"xmark.circle" withConfiguration:config];
+        return image;
+    } else {
+        // Fallback on earlier versions
+        return nil;
+    }
+    
 }
 
 -(UITextView *) setupTextView:(CGFloat) height {
@@ -280,7 +317,7 @@ NSString *logsHistory = @"";
     if(self.tv == nil) {
 //        NSLog(@"TV nil");
         /// fall back to track logs before tv initializaiton
-        logsHistory = [logsHistory stringByAppendingString:[NSString stringWithFormat:@"%@\n", message]];
+        logsHistory = [message stringByAppendingString:[NSString stringWithFormat:@"\n%@", logsHistory]];
         return;
     }
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -288,7 +325,8 @@ NSString *logsHistory = @"";
             self.tv.text = logsHistory; 
             logsHistory = @"";
         }
-        [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
+//        [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
+        self.tv.text = [NSString stringWithFormat:@"%@\n%@", message, self.tv.text];
     });
 }
 

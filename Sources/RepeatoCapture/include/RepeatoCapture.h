@@ -8,6 +8,7 @@
 
 #import "RepeatoHeaders.h"
 #import "Logger.h"
+#import "InfoMessages.h"
 
 #ifndef REPEATO_PORT
 //#define INJECTION_PORT 31442
@@ -409,6 +410,7 @@ static char *connectionKey;
             Log(self, @"Connecting to %@:%d...", inaddr, port);
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
+            [InfoMessages.shared onConnect];
             Log(self, @"Connected to %@:%d.", inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
             [newConnections addObject:[NSValue valueWithPointer:writeFp]];
