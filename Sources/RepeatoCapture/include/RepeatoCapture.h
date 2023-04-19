@@ -7,7 +7,7 @@
 #import <zlib.h>
 
 #import "RepeatoHeaders.h"
-#import "InfoMessages.h"
+#import "Logger.h"
 
 #ifndef REPEATO_PORT
 //#define INJECTION_PORT 31442
@@ -390,7 +390,7 @@ static char *connectionKey;
 + (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
     scaleUpFactor = s == 0 ? 1 : s;
     [UIApplication.sharedApplication setIdleTimerDisabled:true];
-    os_log(OS_LOG_DEFAULT, "%@: Start capture at '%{public}@' with scaleUpFactor %{public}f...", self, addrs, scaleUpFactor);
+    Log(self, @"Start capture at '%@' with scaleUpFactor %.2f...", addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
 }
@@ -406,10 +406,10 @@ static char *connectionKey;
         in_port_t port = REPEATO_PORT;
         if (parts.count > 1)
             port = (in_port_t)parts[1].intValue;
-        os_log(OS_LOG_DEFAULT, "%@: Connecting to %@:%d...", self, inaddr, port);
+            Log(self, @"Connecting to %@:%d...", inaddr, port);
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
-            os_log(OS_LOG_DEFAULT, "%@: Connected to %@:%d.", self, inaddr, port);
+            Log(self, @"Connected to %@:%d.", inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
             [newConnections addObject:[NSValue valueWithPointer:writeFp]];
         }
@@ -427,13 +427,13 @@ static char *connectionKey;
         FILE *writeFp = (FILE *)fp.pointerValue;
         int headerSize = 1 + sizeof device.remote;
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
-            os_log(OS_LOG_DEFAULT, "%@: Could not write device info: %s", self, strerror(errno));
+            Log(self, @"Could not write device info: %s", strerror(errno));        
         else if (device.version == REPEATO_VERSION &&
                  fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
-            os_log(OS_LOG_DEFAULT, "%@: Could not write keylen: %s", self, strerror(errno));
+            Log(self, @"Could not write keylen: %s", strerror(errno));
         else if (device.version == REPEATO_VERSION &&
                  fwrite(connectionKey, 1, keylen, writeFp) != keylen)
-            os_log(OS_LOG_DEFAULT, "%@: Could not write key: %s", self, strerror(errno));
+            Log(self, @"Could not write key: %s", strerror(errno));
         else
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
     }
@@ -459,18 +459,18 @@ static char *connectionKey;
 
     if (isdigit(ipAddress[0])){
         int valid = inet_aton(ipAddress, &remoteAddr.sin_addr);
-        os_log(OS_LOG_DEFAULT, "Adress valid (0 == invalid): %d", valid);
+        Log(self, @"Adress valid (0 == invalid): %d", valid);
     } else {
         struct hostent *ent = gethostbyname2(ipAddress, remoteAddr.sin_family);
         if (ent)
             memcpy(&remoteAddr.sin_addr, ent->h_addr_list[0], sizeof remoteAddr.sin_addr);
         else {
-            os_log(OS_LOG_DEFAULT, "%@: Could not look up host '%s'", self, ipAddress);
+            Log(self, @"Could not look up host '%s'", ipAddress);
             return 0;
         }
     }
 
-    os_log(OS_LOG_DEFAULT, "%@: Attempting connection to: %s:%d", self, ipAddress, port);
+    Log(self, @"Attempting connection to: %s:%d", ipAddress, port);
     return [self connectAddr:(struct sockaddr *)&remoteAddr];
 }
 
@@ -479,31 +479,24 @@ static char *connectionKey;
 + (int)connectAddr:(struct sockaddr *)remoteAddr {
     int remoteSocket, optval = 1;
     if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0)
-        os_log(OS_LOG_DEFAULT, "%@: Could not open socket for injection: %s", self, strerror(errno));
+        Log(self, @"Could not open socket for injection: %s", strerror(errno));
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
-        os_log(OS_LOG_DEFAULT, "%@: Could not set TCP_NODELAY: %s", self, strerror(errno));
+        Log(self, @"Could not set TCP_NODELAY: %s", strerror(errno));
     else
         for (int retry = 0; retry<REPEATO_RETRIES; retry++) {
             if (retry)
                 [NSThread sleepForTimeInterval:1.0];
-            os_log(OS_LOG_DEFAULT, "Try #%d", retry);
+            Log(self,@"Try #%d", retry);
             if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
-                os_log(OS_LOG_DEFAULT, "Connected!");
-                [InfoMessages showToast:@"Repeato"
-                                message:@"Connected successfully"
-                                hideAfterDelay:2];
+                Log(self,@"Connected!");
                 return remoteSocket;
             }
         }
 
-    os_log(OS_LOG_DEFAULT, "%@: Could not connect: %s", self, strerror(errno));
+    Log(self,@"Could not connect: %s", strerror(errno));
     close(remoteSocket);
-    
-//    [InfoMessages dismiss];
-    NSString *message = [NSString stringWithFormat:@"%s", strerror(errno)];
-    [InfoMessages showToast:@"Failed to connect"
-                    message:message
-                    hideAfterDelay:3];
+//    NSString *message = [NSString stringWithFormat:@"%s", strerror(errno)];
+     Log(self,@"%s", strerror(errno));
     return 0;
 }
 
@@ -608,10 +601,10 @@ static int frameno; // count of frames captured and transmmitted
 /// @param flush force transmission of screen update reguardless of timestamp
 + (void)capture:(NSTimeInterval)timestamp flush:(BOOL)flush {
     if(!isStreamEnabled){
-        os_log(OS_LOG_DEFAULT, "Capture: disabled");
+        Log(self, @"Capture: disabled");
         return;
     }
-    os_log(OS_LOG_DEFAULT, "Capture now! %f", scaleUpFactor);
+    Log(self, @"Capture now! %f", scaleUpFactor);
     
     NSTimeInterval start = REPEATO_NOW;
     
@@ -693,7 +686,7 @@ static int frameno; // count of frames captured and transmmitted
         NSData *encoded = UIImageJPEGRepresentation(screenshot, REPEATO_JPEGQUALITY);
       
     
-        //os_log(OS_LOG_DEFAULT, " frame size: %lu", encoded.length);
+        //Log(self, @" frame size: %lu", encoded.length);
 
         for (NSValue *fp in connections) {
             FILE *writeFp = (FILE *)fp.pointerValue;
@@ -702,9 +695,9 @@ static int frameno; // count of frames captured and transmmitted
                                     sizeof frameSize : sizeof frame;
             if (fwrite(device.version <= HYBRID_VERSION ? (void *)&frameSize :
                       (void *)&frame, 1, frameHeaderSize, writeFp) != frameHeaderSize)
-                os_log(OS_LOG_DEFAULT, "%@: Could not write frame: %s", self, strerror(errno));
+                Log(self, @"Could not write frame: %s", strerror(errno));
             else if (fwrite(encoded.bytes, 1, encoded.length, writeFp) != encoded.length)
-                os_log(OS_LOG_DEFAULT, "%@: Could not write encoded: %s", self, strerror(errno));
+                Log(self, @"Could not write encoded: %s", strerror(errno));
             else
                 fflush(writeFp);
         }
@@ -754,30 +747,30 @@ static int frameno; // count of frames captured and transmmitted
 
             if (sentText) {
                 if ([sentText isEqualToString:@"repeato:clear_text"]){
-                    os_log(OS_LOG_DEFAULT, "Remote asked to clear text");
+                    Log(self, @"Remote asked to clear text");
                     [textField setText:@""];
                 }
                 else if ([sentText isEqualToString:@"repeato:backspace"]) {
-                    os_log(OS_LOG_DEFAULT, "Remote asked to remove last letter");
+                    Log(self, @"Remote asked to remove last letter");
                     [textField deleteBackward];
                 }
                 else if ([sentText isEqualToString:@"repeato:quit_app"]) {
-                    os_log(OS_LOG_DEFAULT, "Remote asked to quit app");
+                    Log(self, @"Remote asked to quit app");
                     exit(0);
                 } else if ([sentText isEqualToString:@"repeato:enable_stream"]) {
-                    os_log(OS_LOG_DEFAULT, "Enable image stream");
+                    Log(self, @"Enable image stream");
                     isStreamEnabled = TRUE;
                 }else if ([sentText isEqualToString:@"repeato:disable_stream"]) {
-                    os_log(OS_LOG_DEFAULT, "Disable image stream");
+                    Log(self, @"Disable image stream");
                     isStreamEnabled = FALSE;
                 } else if ([sentText hasPrefix:@"repeato:set_scale_up_factor:"]) {
                     NSString *scaleUpParam = [sentText stringByReplacingOccurrencesOfString:@"repeato:set_scale_up_factor:" withString:@""];
-                    os_log(OS_LOG_DEFAULT, "Set scale up factor to %{public}@", scaleUpParam);
+                    Log(self, @"Set scale up factor to %{public}@", scaleUpParam);
                     scaleUpFactor = [scaleUpParam floatValue];
                     // send a new frame with the requested resolution right away
                     [self queueCapture];
                 } else {
-                    os_log(OS_LOG_DEFAULT, "Insert text");
+                    Log(self, @"Insert text");
                     [textField insertText:sentText];
                 }
 
@@ -937,23 +930,21 @@ static int frameno; // count of frames captured and transmmitted
                     break;
 
                 default:
-                    os_log(OS_LOG_DEFAULT, "%@: Invalid Event: %d", self, rpevent.phase);
+                    Log(self, @"Invalid Event: %d", rpevent.phase);
             }
 
             inhibitEcho = nil;
         });
     }
 
-    os_log(OS_LOG_DEFAULT, "%@: processEvents: exits", self);
+    Log(self, @"processEvents: exits");
     fclose(readFp);
 
     [connections removeObject:writeFp];
     fclose((FILE *)writeFp.pointerValue);
     if (!connections.count)
         [self shutdown];
-    [InfoMessages showToast:@"Disconnected"
-                    message:@"Connection to Repeato is lost"
-                    hideAfterDelay:2];
+    Log(self, @"Disconnected");
 }
 
 /// Stop capturing events
@@ -981,7 +972,7 @@ static int frameno; // count of frames captured and transmmitted
         int64_t delta = 0;
         if (!flush) {
             if (timestamp < mostRecentScreenUpdate) {
-                os_log(OS_LOG_DEFAULT, "Discard 1 flush: %d", flush);
+                Log(self, @"Discard 1 flush: %d", flush);
                 return;
             }
             
@@ -992,12 +983,12 @@ static int frameno; // count of frames captured and transmmitted
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delta), dispatch_get_main_queue(), ^{
             if(flush){
                 if(timestamp < lastCaptureTime){
-                    os_log(OS_LOG_DEFAULT, "timestamp < lastCaptureTime");
+                    Log(self, @"timestamp < lastCaptureTime");
                     return;
                 }
             }else {
                 if(timestamp < mostRecentScreenUpdate){
-                    os_log(OS_LOG_DEFAULT, "timestamp < mostRecentScreenUpdate");
+                    Log(self, @"timestamp < mostRecentScreenUpdate");
                     return;
                 }
             }
@@ -1072,7 +1063,7 @@ static int frameno; // count of frames captured and transmmitted
                 continue;
             FILE *writeFp = (FILE *)fp.pointerValue;
             if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
-                os_log(OS_LOG_DEFAULT, "%@: Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
+                Log(self, @"Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
             else
                 fflush(writeFp);
         }

@@ -16,14 +16,17 @@
 #define REPEATO_IMPL
 #import "RepeatoCapture.h"
 #import "InfoMessages.h"
+#import "Logger.h"
+
 
 @implementation RepeatoCapture(AutoConnect)
 + (void)load {
+    [[InfoMessages shared] showAlert];
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
-    os_log(OS_LOG_DEFAULT, "%@: Launch arguments: %{public}@", self, arguments);
+    DebugLog(self, @"Launch arguments", [arguments componentsJoinedByString:@","]);
     NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
     float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
-
+    
 #if TARGET_IPHONE_SIMULATOR
     // on simulators we fall back to localhost, since the DEVELOPER_HOST (Host.current().name) turned out to be slightly unreliable
     if (hostAddress == NULL) {
@@ -31,18 +34,18 @@
     }
 #endif
     if (hostAddress == NULL) {
-        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found. Launch arguments: %{public}@", self, arguments);
+        DebugLog(self,@"Host-address launch argument not found. Launch arguments:", arguments);
 //        #ifdef DEVELOPER_HOST
 //        os_log(OS_LOG_DEFAULT, "%@: Host-address launch argument not found -> using fallback %{public}s! ", self, DEVELOPER_HOST);
 //        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
 //        #endif
         
-        [InfoMessages noLaunchArgumentsPassed];
+        [[InfoMessages shared] noLaunchArgumentsPassed];
 
     } else {
-        os_log(OS_LOG_DEFAULT, "%@: Host-address: %{public}@!", self, hostAddress);
+        Log(self,@"Host-address: %@", hostAddress);
         [self startCapture:hostAddress scaleUpFactor:scaleUpFactor];
-        [InfoMessages launchArgumentPassed:hostAddress];
+        Log(self,@"Trying to connect to %@", hostAddress);
     }
     
 }

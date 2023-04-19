@@ -22,6 +22,7 @@
 		784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoHeaders.h; sourceTree = "<group>"; };
 		784F0B29295164B400CEB6E1 /* RepeatoCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RepeatoCapture.h; sourceTree = "<group>"; };
 		78A32F2829EDE36800CC4B6C /* InfoMessages.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InfoMessages.h; sourceTree = "<group>"; };
+		78A894AE29EEBB2F0013F6DD /* Logger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
 		78BB92CD292B2D12007DFB57 /* Repeato.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Repeato.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		78BB92D0292B2D12007DFB57 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78BB92D2292B2D12007DFB57 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -63,6 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				784F0B27295164B400CEB6E1 /* RepeatoImpl.m */,
+				78A894AE29EEBB2F0013F6DD /* Logger.h */,
 				784F0B28295164B400CEB6E1 /* RepeatoHeaders.h */,
 				784F0B29295164B400CEB6E1 /* RepeatoCapture.h */,
 				78A32F2829EDE36800CC4B6C /* InfoMessages.h */,
