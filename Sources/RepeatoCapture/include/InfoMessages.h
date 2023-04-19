@@ -9,7 +9,7 @@
 #import <UIKit/UIKit.h>
 #import "Logger.h"
 
-#define REPEATO_INFO_ABORT_DELAY 3
+#define REPEATO_INFO_ABORT_DELAY 5
 #define REPEATO_INFO_VIEW_TAG 1022
 #define REPEATO_INFO_ALERT_PADDING 20
 #define REPEATO_INFO_ALERT_INTERNAL_PADDING 8
@@ -76,6 +76,9 @@ NSString *logsHistory = @"";
     }
 }
 -(void)trackRemainingTime:(NSTimer *)timer {
+    if(hasCancelledTestOperation == TRUE){
+        return;
+    }
     int timeleft = REPEATO_INFO_ABORT_DELAY - seconds;
     DebugLog(self, @"Closing the app in %i...", timeleft);
     [self.lblCancel setText:[NSString stringWithFormat:@"Closing the app in %i...", timeleft]];
@@ -213,7 +216,7 @@ NSString *logsHistory = @"";
 
 -(UITextView *) setupTextView:(CGFloat) height {
     self.tv = [[UITextView alloc] init];
-    [self.tv setFont:[UIFont systemFontOfSize:17]];
+    [self.tv setFont:[UIFont systemFontOfSize:14]];
     [self.tv setTextColor: [UIColor darkGrayColor]];
     [self.tv setBackgroundColor:[UIColor clearColor]];
     [self.tv setEditable:FALSE];
@@ -256,8 +259,9 @@ NSString *logsHistory = @"";
 #pragma mark Supporting functions
 -(void) cancelOperation {
     hasCancelledTestOperation = TRUE;
-    Log(self, @"Won't close app becuase user has cancelled testing with Repeato");
-    [self dismiss];
+    Log(self, @"Interrupted app closing by user.");
+    [self.btnCancel setHidden:true];
+    [self.lblCancel setHidden:true];
 }
 
 #pragma mark Round view
