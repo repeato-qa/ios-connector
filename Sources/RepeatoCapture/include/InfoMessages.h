@@ -38,6 +38,7 @@ UIView *alertContainer;
 int seconds = 0;
 NSString *logsHistory = @"";
 int alertRetryPresentationCount = 0;
+bool noLaunchArgumentsPassed = false;
 
 + (instancetype)shared {
     static id instance;
@@ -111,7 +112,7 @@ int alertRetryPresentationCount = 0;
 
 -(void) noLaunchArgumentsPassed {
     Log(self,@"No launch arguments given");
-    
+    noLaunchArgumentsPassed = true;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.lblCancel setHidden:FALSE];
         [self.btnCancel setHidden:FALSE];
@@ -127,7 +128,10 @@ int alertRetryPresentationCount = 0;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
                                  delay * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
-        [self setupAlertUI];
+        [self initAlert];
+        if(noLaunchArgumentsPassed) {
+            [self noLaunchArgumentsPassed];
+        }
     });
 
 }
@@ -137,7 +141,9 @@ int alertRetryPresentationCount = 0;
     
     UIViewController *topVC = [[[UIApplication sharedApplication] keyWindow] rootViewController];
     if(topVC == nil) {
-        [self retryPresentingAlert:1];
+        if([topVC.view viewWithTag:REPEATO_INFO_VIEW_TAG] == nil) {
+            [self retryPresentingAlert:1];
+        }
         return;
     }
     float padding = REPEATO_INFO_ALERT_PADDING;
@@ -299,6 +305,7 @@ int alertRetryPresentationCount = 0;
     Log(self, @"Interrupted app closing by user.");
     [self.btnCancel setHidden:true];
     [self.lblCancel setHidden:true];
+    [self dismiss];
 }
 
 #pragma mark Round view
