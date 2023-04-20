@@ -410,6 +410,7 @@ static char *connectionKey;
             Log(self, @"Connecting to %@:%d...", inaddr, port);
         int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
         if (remoteSocket) {
+            isConnectedWithHost = true;
             [InfoMessages.shared onConnect];
             Log(self, @"Connected to %@:%d.", inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
@@ -491,6 +492,8 @@ static char *connectionKey;
             Log(self,@"Try #%d", retry);
             if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
                 Log(self,@"Connected!");
+                isConnectedWithHost = true;
+                [InfoMessages.shared onConnect];
                 return remoteSocket;
             }
         }
@@ -947,6 +950,7 @@ static int frameno; // count of frames captured and transmmitted
     if (!connections.count)
         [self shutdown];
     Log(self, @"Disconnected");
+    isConnectedWithHost = false;
     [InfoMessages.shared onDisconnect];
 }
 

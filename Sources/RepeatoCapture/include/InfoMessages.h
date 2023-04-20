@@ -18,6 +18,7 @@
 #define REPEATO_INFO_RETRY_LIMIT 3
 
 static BOOL hasCancelledTestOperation = FALSE;
+static BOOL isConnectedWithHost = FALSE;
 
 NS_ASSUME_NONNULL_BEGIN
 @interface InfoMessages : NSObject <LogAlertDelegate>
@@ -40,7 +41,6 @@ int seconds = 0;
 NSString *logsHistory = @"";
 int alertRetryPresentationCount = 0;
 bool hasLaunchArgumentsPassed = false;
-bool isConnected = false;
 
 + (instancetype)shared {
     static id instance;
@@ -53,6 +53,10 @@ bool isConnected = false;
 }
 
 -(void) initAlert {
+    if(isConnectedWithHost) {
+        [self dismiss];
+        return;
+    }
     Logger.shared.delegate = self;
     seconds = 0;
     logsHistory = @"";
@@ -73,6 +77,10 @@ bool isConnected = false;
 }
 
 -(void) setupTimer {
+    if(isConnectedWithHost) {
+        [self dismiss];
+        return;
+    }
     [self stopTimer];
     self.timer = [NSTimer scheduledTimerWithTimeInterval:1
         target:self
@@ -90,8 +98,8 @@ bool isConnected = false;
         [self stopTimer];
         return;
     }
-    if(isConnected) {
-        Log(self, @"Won't close the app because app has been connected with host");
+    if(isConnectedWithHost) {
+        Log(self, @"Dismiss alert because app has been connected with host already");
         [self dismiss];
         return;
     }
@@ -148,7 +156,8 @@ bool isConnected = false;
                                  delay * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
         [self initAlert];
-        if(hasLaunchArgumentsPassed) {
+        if(hasLaunchArgumentsPassed &&
+           isConnectedWithHost == false) {
             [self noLaunchArgumentsPassed];
         }
     });
