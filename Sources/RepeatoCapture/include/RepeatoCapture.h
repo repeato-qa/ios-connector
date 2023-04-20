@@ -947,6 +947,7 @@ static int frameno; // count of frames captured and transmmitted
     if (!connections.count)
         [self shutdown];
     Log(self, @"Disconnected");
+    [InfoMessages.shared onDisconnect];
 }
 
 /// Stop capturing events

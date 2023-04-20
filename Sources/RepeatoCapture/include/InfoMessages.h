@@ -31,6 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 -(void) showAlert;
 -(void) noLaunchArgumentsPassed;
 -(void) onConnect;
+-(void) onDisconnect;
 @end
 
 @implementation InfoMessages
@@ -38,7 +39,8 @@ UIView *alertContainer;
 int seconds = 0;
 NSString *logsHistory = @"";
 int alertRetryPresentationCount = 0;
-bool noLaunchArgumentsPassed = false;
+bool hasLaunchArgumentsPassed = false;
+bool isConnected = false;
 
 + (instancetype)shared {
     static id instance;
@@ -56,8 +58,12 @@ bool noLaunchArgumentsPassed = false;
     logsHistory = @"";
     dispatch_async(dispatch_get_main_queue(), ^{
         [self setupAlertUI];
-//        [self setupTimer];
     });
+}
+
+-(void) initAlertWithCountAndCancelOption {
+    [self initAlert];
+    [self noLaunchArgumentsPassed];
 }
 
 -(void) showAlert {
@@ -81,6 +87,12 @@ bool noLaunchArgumentsPassed = false;
 }
 -(void)trackRemainingTime:(NSTimer *)timer {
     if(hasCancelledTestOperation == TRUE){
+        [self stopTimer];
+        return;
+    }
+    if(isConnected) {
+        Log(self, @"Won't close the app because app has been connected with host");
+        [self dismiss];
         return;
     }
     int timeleft = REPEATO_INFO_ABORT_DELAY - seconds;
@@ -90,6 +102,7 @@ bool noLaunchArgumentsPassed = false;
     if(seconds > REPEATO_INFO_ABORT_DELAY &&
         hasCancelledTestOperation == FALSE){
         Log(self, @"Closing app on testing operation timeout");
+        [self dismiss];
         exit(0);
     }
 }
@@ -110,9 +123,15 @@ bool noLaunchArgumentsPassed = false;
     [self dismiss];
 }
 
+-(void) onDisconnect{
+    Log(self,@"Displaying alert on host disconnect");
+    [self dismiss];
+    [self initAlertWithCountAndCancelOption];
+}
+
 -(void) noLaunchArgumentsPassed {
     Log(self,@"No launch arguments given");
-    noLaunchArgumentsPassed = true;
+    hasLaunchArgumentsPassed = true;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.lblCancel setHidden:FALSE];
         [self.btnCancel setHidden:FALSE];
@@ -129,7 +148,7 @@ bool noLaunchArgumentsPassed = false;
                                  delay * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
         [self initAlert];
-        if(noLaunchArgumentsPassed) {
+        if(hasLaunchArgumentsPassed) {
             [self noLaunchArgumentsPassed];
         }
     });
@@ -142,6 +161,7 @@ bool noLaunchArgumentsPassed = false;
     UIViewController *topVC = [[[UIApplication sharedApplication] keyWindow] rootViewController];
     if(topVC == nil) {
         if([topVC.view viewWithTag:REPEATO_INFO_VIEW_TAG] == nil) {
+            Log(self, @"Its fallback for abortted app, sometimes Repeato alert doesn't appear on second launch");
             [self retryPresentingAlert:1];
         }
         return;
@@ -305,7 +325,7 @@ bool noLaunchArgumentsPassed = false;
     Log(self, @"Interrupted app closing by user.");
     [self.btnCancel setHidden:true];
     [self.lblCancel setHidden:true];
-    [self dismiss];
+//    [self dismiss];
 }
 
 #pragma mark Round view
