@@ -134,7 +134,11 @@ bool hasLaunchArgumentsPassed = false;
 -(void) onDisconnect{
     Log(self,@"Displaying alert on host disconnect");
     [self dismiss];
-    [self initAlertWithCountAndCancelOption];
+    #if TARGET_IPHONE_SIMULATOR
+        [self initAlert];
+    #else
+        [self initAlertWithCountAndCancelOption];
+    #endif
 }
 
 -(void) noLaunchArgumentsPassed {
@@ -351,19 +355,24 @@ bool hasLaunchArgumentsPassed = false;
 #pragma mark Logger delegate
 - (void)logEvent:(NSString *)message {
     if(self.tv == nil) {
-//        NSLog(@"TV nil");
         /// fall back to track logs before tv initializaiton
-        logsHistory = [message stringByAppendingString:[NSString stringWithFormat:@"\n%@", logsHistory]];
+        logsHistory = [logsHistory stringByAppendingString:[NSString stringWithFormat:@"%@\n", message]];
         return;
     }
     dispatch_async(dispatch_get_main_queue(), ^{
         if(![logsHistory isEqualToString:@""]) {
-            self.tv.text = logsHistory; 
+            self.tv.text = logsHistory;
             logsHistory = @"";
         }
-//        [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
-        self.tv.text = [NSString stringWithFormat:@"%@\n%@", message, self.tv.text];
+        [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
+        [self textViewScrollToBottom];
     });
+}
+
+-(void) textViewScrollToBottom {
+//    [[self.tv layoutManager] setAllowsNonContiguousLayout:FALSE];
+    long stringLength = [self.tv.text length];
+    [self.tv scrollRangeToVisible:NSMakeRange(stringLength-1, 0)];
 }
 
 NS_ASSUME_NONNULL_END
