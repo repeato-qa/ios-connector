@@ -32,6 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 -(void) showAlert;
 -(void) noLaunchArgumentsPassed;
 -(void) onConnect;
+-(void) onError;
 -(void) onDisconnect;
 @end
 
@@ -40,7 +41,7 @@ UIView *alertContainer;
 int seconds = 0;
 NSString *logsHistory = @"";
 int alertRetryPresentationCount = 0;
-bool hasLaunchArgumentsPassed = false;
+bool noLaunchArgPassed = false;
 
 + (instancetype)shared {
     static id instance;
@@ -132,6 +133,7 @@ bool hasLaunchArgumentsPassed = false;
 }
 
 -(void) onDisconnect{
+    /// will display alert if connection with repeato last
     Log(self,@"Displaying alert on host disconnect");
     [self dismiss];
     #if TARGET_IPHONE_SIMULATOR
@@ -141,14 +143,26 @@ bool hasLaunchArgumentsPassed = false;
     #endif
 }
 
--(void) noLaunchArgumentsPassed {
-    Log(self,@"No launch arguments given");
-    hasLaunchArgumentsPassed = true;
+-(void) onError{
+    #if !TARGET_IPHONE_SIMULATOR
+        DebugLog(self,@"Dismiss alert on connection error");
+        [self shouldAutoHideAlert];
+    #endif
+}
+
+-(void) shouldAutoHideAlert {
+    DebugLog(self,@"Auto hide alert");
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.lblCancel setHidden:FALSE];
         [self.btnCancel setHidden:FALSE];
         [self setupTimer];
     });
+}
+
+-(void) noLaunchArgumentsPassed {
+    Log(self,@"No launch arguments given");
+    noLaunchArgPassed = true;
+    [self shouldAutoHideAlert];
 }
 
 -(void) retryPresentingAlert:(int) delay {
@@ -160,7 +174,7 @@ bool hasLaunchArgumentsPassed = false;
                                  delay * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
         [self initAlert];
-        if(hasLaunchArgumentsPassed &&
+        if(noLaunchArgPassed &&
            isConnectedWithHost == false) {
             [self noLaunchArgumentsPassed];
         }
@@ -298,7 +312,7 @@ bool hasLaunchArgumentsPassed = false;
     [self.tv setEditable:FALSE];
     [self setupBorder:self.tv borderWidth:2];
     [self roundView:self.tv radius:5];
-    [self.tv setText:@"Starting Repeato..."];
+    [self.tv setText:@"Starting Repeato...\n"];
 //    [self.tv.heightAnchor constraintLessThanOrEqualToConstant:height].active = true;
     [self.tv.heightAnchor constraintEqualToConstant:height].active = true;
     self.tv.translatesAutoresizingMaskIntoConstraints = false;
