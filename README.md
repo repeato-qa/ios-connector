@@ -72,7 +72,13 @@ use_frameworks!
 pod 'Repeato', :git => 'https://github.com/repeato-qa/ios-connector.git', :branch => 'main'
 ```
 
-Then run `pod install` in your project directory.
+By default cocoa pod dependencies are installed in all the build configurations of the target. Since **we don't recommend to include the connector into a production build** of your app, there is a way to only use it in certain configurations.
+
+```
+platform :ios, '11.0'
+use_frameworks!
+pod 'Repeato', :git => 'https://github.com/repeato-qa/ios-connector.git', :configurations => ['Debug', 'Beta'], :branch => 'main'
+```
 
 # Implementation details
 
