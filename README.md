@@ -18,7 +18,7 @@ Manual app launches most probably will not work.
 
 # Installation
 
-The connector can be installed via Swift Package Manager or CocoaPods.
+The connector can be installed via Swift Package Manager, CocoaPods or Xamarin binding.
 
 ## Installation via Swift Package Manager
 
@@ -79,6 +79,18 @@ platform :ios, '11.0'
 use_frameworks!
 pod 'Repeato', :git => 'https://github.com/repeato-qa/ios-connector.git', :configurations => ['Debug', 'Beta'], :branch => 'main'
 ```
+
+## Installation for Xamarin Apps on iOS
+
+On Android Repeato connects to the app automatically. No need to install a connector.
+On iOS however, the connector needs to be installed into the app:
+
+1. Download the [RepeatoCapture.dll](/xamarin-bindings/Test/Test/Libraries/RepeatoCapture.dll) from our repository.
+2. Open your Xamarin project in Xamarin or Visual Studio
+3. Right click "References" in the "solution" pane and select "Add project reference"
+4. Open the ".NET Assembly" tab
+5. Select the RepeatoCapture.dll you downloaded in step 1
+6. Rebuild and run your project
 
 # Implementation details
 
