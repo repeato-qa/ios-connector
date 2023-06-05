@@ -2,7 +2,7 @@ How to create Bindings Library.
 1. Install the latest version of sharpie: https://docs.microsoft.com/en-us/xamarin/cross-platform/macios/binding/objective-sharpie/get-started#installing
 2. Download Library and rename RepeatoImpl.m to RepeatoCapture.h
 3. Make Fat library (.a) with next Make file
-
+```
 XBUILD=/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild
 PROJECT_ROOT=./RepeatoCapture
 PROJECT=$(PROJECT_ROOT)/RepeatoCapture.xcodeproj
@@ -25,9 +25,11 @@ lib$(TARGET).a: lib$(TARGET)-x86_64.a lib$(TARGET)-arm64.a
 clean:
 	-rm -f *.a *.dll
 
-
+```
 4. Call sharpie command that would gererate ApiDefinition.cs anв Structs.cs
+```
 sharpie bind -output RepeatoCaptureLibrary -namespace  RepeatoCapture -sdk iphoneos16.2 RepeatoCapture/build/Release-iphoneos/include/RepeatoCapture/RepeatoCapture.h  -scope RepeatoCapture/build/Release-iphoneos/include/RepeatoCapture 
+```
 
 //iphoneos16.2 - change to sdk that XCode supports
 
