@@ -26,7 +26,7 @@ clean:
 	-rm -f *.a *.dll
 
 ```
-4. Call sharpie command that would gererate ApiDefinition.cs anв Structs.cs
+4. Call sharpie command that would gererate ApiDefinition.cs and Structs.cs
 ```
 sharpie bind -output RepeatoCaptureLibrary -namespace  RepeatoCapture -sdk iphoneos16.2 RepeatoCapture/build/Release-iphoneos/include/RepeatoCapture/RepeatoCapture.h  -scope RepeatoCapture/build/Release-iphoneos/include/RepeatoCapture 
 ```
