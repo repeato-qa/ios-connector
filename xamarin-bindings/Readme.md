@@ -34,6 +34,6 @@ sharpie bind -output RepeatoCaptureLibrary -namespace  RepeatoCapture -sdk iphon
 //iphoneos16.2 - change to sdk that XCode supports
 
 5. Copy generated code into Xamarin Bindings Lib project
-6. Include/Repleace Fat Lib into project as well
+6. Include/Replace Fat Lib into project as well
 7. Call Build command for the solution
 8. Copy gererated lib from bin/iPhone and add as reference into Xamarin.iOS project
