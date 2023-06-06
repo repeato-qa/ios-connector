@@ -1,7 +1,7 @@
 # iOS Connector for Repeato Studio and Repeato CLI
 
-This library allows remote controlling iOS devices / simulators from an automation host.
-This connector library needs to be embedded into your app and takes care of transmitting and receiving data from [Repeato Studio](https://www.repeato.app) or [Repeato CLI](https://www.npmjs.com/package/@repeato/cli-testrunner).
+This open source library allows remote controlling iOS devices / simulators from an automation host.
+The connector library needs to be embedded into your app and takes care of transmitting and receiving data from [Repeato Studio](https://www.repeato.app) or [Repeato CLI](https://www.npmjs.com/package/@repeato/cli-testrunner).
 
 # How does the connector work?
 
@@ -93,9 +93,9 @@ On iOS however, the connector needs to be installed into the app:
 6. Rebuild and run your project
 
 # Implementation details
-
 (mostly internal documentation for our dev team)
 
+## Connection debug dialog shown on device - how does it work?
 The connector shows a dialog on launch of the app to simplify debugging for the user in case of a connection issue. As soon as the connector connects to Repeato, the dialog is automatically closed.
 
 Here are the details of how this dialog operates:
@@ -109,3 +109,45 @@ Here are the details of how this dialog operates:
 
 **To sum it up**: It doesn't matter if host IP is known or not and if launch args are given or not: We show the dialog when there is no connection to the host (either because it is not yet established or it was not possible or the connection broke)
 Additionally we show a countdown and close the app if no connection is there BUT only on physical devices.
+
+## Xamarin - How to create/update the bindings library.
+
+
+1. Install the latest version of sharpie: https://docs.microsoft.com/en-us/xamarin/cross-platform/macios/binding/objective-sharpie/get-started#installing
+2. Download Library and rename RepeatoImpl.m to RepeatoCapture.h
+3. Create Fat library (.a) with next Make file
+```
+XBUILD=/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild
+PROJECT_ROOT=./RepeatoCapture
+PROJECT=$(PROJECT_ROOT)/RepeatoCapture.xcodeproj
+TARGET=RepeatoCapture
+
+
+all: lib$(TARGET).a
+
+lib$(TARGET)-x86_64.a:
+	$(XBUILD) -project $(PROJECT) -target $(TARGET) -sdk iphonesimulator -configuration Release clean build
+	-mv $(PROJECT_ROOT)/build/Release-iphonesimulator/lib$(TARGET).a $@
+
+lib$(TARGET)-arm64.a:
+	$(XBUILD) -project $(PROJECT) -target $(TARGET) -sdk iphoneos -arch arm64 -configuration Release clean build
+	-mv $(PROJECT_ROOT)/build/Release-iphoneos/lib$(TARGET).a $@
+
+lib$(TARGET).a: lib$(TARGET)-x86_64.a lib$(TARGET)-arm64.a
+	xcrun -sdk iphoneos lipo -create -output $@ $^
+
+clean:
+	-rm -f *.a *.dll
+
+```
+4. Call sharpie command that would gererate ApiDefinition.cs and Structs.cs
+```
+sharpie bind -output RepeatoCaptureLibrary -namespace  RepeatoCapture -sdk iphoneos16.2 RepeatoCapture/build/Release-iphoneos/include/RepeatoCapture/RepeatoCapture.h  -scope RepeatoCapture/build/Release-iphoneos/include/RepeatoCapture 
+```
+
+//iphoneos16.2 - change to sdk that XCode supports
+
+5. Copy generated code into Xamarin Bindings Lib project
+6. Include/Replace Fat Lib into project as well
+7. Call Build command for the solution
+8. Copy gererated lib from bin/iPhone and add as reference into Xamarin.iOS project
