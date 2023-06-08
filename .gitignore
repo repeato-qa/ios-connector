@@ -5,3 +5,9 @@
 *xccheckout*
 .swiftpm
 .build
+*.suo
+*.user
+*.pdb
+obj/
+bin/
+.vs/
