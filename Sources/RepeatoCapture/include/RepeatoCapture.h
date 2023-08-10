@@ -134,7 +134,8 @@ struct _rmdevice {
             char isIPad[4]; // int
             char protocolVersion[4];// int
             char displaySize[12]; // 9999x9999
-            char expansion[48];
+            char deviceName[24];
+            char expansion[24];
             char magic[4]; // int
         } remote;
     };
@@ -566,14 +567,18 @@ static CGSize bufferSize; // current size of off-screen image buffers
     *(float *)device.remote.scale = scaleUpFactor;
     *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 120;
+    *(int *)device.remote.protocolVersion = 123;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
-    
+
     NSString *displaySize = [NSString stringWithFormat:@"%ix%i", (int) screenSize.width, (int) screenSize.height];
     strncpy(device.remote.displaySize, [displaySize UTF8String], sizeof device.remote.displaySize-1);
-    
-    
+
+    __block NSString *deviceName;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        deviceName = [[UIDevice currentDevice] name];
+    });
+    strncpy(device.remote.deviceName, [deviceName UTF8String], sizeof device.remote.deviceName-1);
 }
 
 static int skipEcho; // Was to filter out layer commits during capture
