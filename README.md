@@ -80,6 +80,18 @@ use_frameworks!
 pod 'Repeato', :git => 'https://github.com/repeato-qa/ios-connector.git', :configurations => ['Debug', 'Beta'], :branch => 'main'
 ```
 
+## Installation for React-Native Apps
+
+On Android Repeato connects to the app automatically. No need to install a connector.
+On iOS however, the connector needs to be installed into the app.
+
+Follow these steps:
+
+1. "Eject" your react-native app to generate your native iOS app project: `npx react-native eject`
+2. Open the "iOS" folder of your app 
+3. Double click the "...xcworkspace" file to open the project in Xcode
+4. Follow the guide above to add the swift package to your project
+
 ## Installation for Xamarin Apps on iOS
 
 On Android Repeato connects to the app automatically. No need to install a connector.
@@ -91,6 +103,15 @@ On iOS however, the connector needs to be installed into the app:
 4. Open the ".NET Assembly" tab
 5. Select the RepeatoCapture.dll you downloaded in step 1
 6. Rebuild and run your project
+
+# Trouble shooting
+
+## App does not connect to Repeato-Studio
+Check: When you launch the app, is this dialog shown?
+![ios-connector-dialog](/docs/assets/ios-connector-dialog.png)
+**If YES**: Take a look at the line "Trying to connect to ...". The connector is trying to connect to that address. If that address is wrong, the app will not be able to connect to Repeato. If you are running the app on a simulator, the address can default to "localhost", that is fine. If you are running the app on a physical device however, the address of your machine, running Repeato, might not be known by the app. In that case, you need to start the app via Repeato (either via a "Start app" step, or via the "Start last used app" button). Manual app launches most probably will not work.
+
+**If NO**: You might need to check if the plugin is integrated properly. If you are not a developer, you might need to talk to one. The plugin is open source, so they might easily find the reason why the dialog is not shown.
 
 # Implementation details
 (mostly internal documentation for our dev team)
