@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TestForms.MainPage">
+    
+    <StackLayout Padding="16">
+        <Label>Some test label</Label>
+        <Entry Placeholder="Entry some text"></Entry>
+        <Image Source="icon" WidthRequest="24" HeightRequest="24"/>
+
+        <Label x:Name="TestLabel"></Label>
+        <Button Text="Some test button" Clicked="Button_Clicked" x:Name="TestButton" />
+
+        <StackLayout RadioButtonGroup.GroupName="colors">
+            <Label Text="Select" />
+                <RadioButton Content="Red"  CheckedChanged="OnColorsRadioButtonCheckedChanged"/>
+                <RadioButton Content="Green"  CheckedChanged="OnColorsRadioButtonCheckedChanged"/>
+                <RadioButton Content="Blue"  CheckedChanged="OnColorsRadioButtonCheckedChanged"/>
+            <Label x:Name="RedioButtonResultLabel" />
+        </StackLayout>
+
+        <Picker x:Name="picker"
+            Title="Select a value"
+            TitleColor="Green">
+          <Picker.ItemsSource>
+            <x:Array Type="{x:Type x:String}">
+              <x:String>Value 1</x:String>
+              <x:String>Value 2</x:String>
+              <x:String>Value 3</x:String>
+            </x:Array>
+          </Picker.ItemsSource>
+        </Picker>
+
+        <Label Text="{Binding Source={x:Reference picker}, Path=SelectedItem}" />
+    </StackLayout>
+
+</ContentPage>
+
