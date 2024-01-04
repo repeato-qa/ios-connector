@@ -136,7 +136,8 @@ struct _rmdevice {
             char displaySize[12]; // 9999x9999
             char deviceName[24];
             char systemVersion[4]; //float
-            char expansion[20];
+            char appFrameWorkType[4]; //int 0: default, 1: flutter
+            char expansion[16];
             char magic[4]; // int
         } remote;
     };
@@ -568,7 +569,7 @@ static CGSize bufferSize; // current size of off-screen image buffers
     *(float *)device.remote.scale = scaleUpFactor;
     *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 124;
+    *(int *)device.remote.protocolVersion = 125;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
 
@@ -594,6 +595,10 @@ static CGSize bufferSize; // current size of off-screen image buffers
     
     //strncpy(device.remote.systemVersion, [systemVersion UTF8String], sizeof(device.remote.systemVersion) - 1);
     *(float *)device.remote.systemVersion = systemVersion;
+    if (NSClassFromString(@"FlutterViewController") != nil) {
+        // The app likely includes Flutter
+        *(int *)device.remote.appFrameWorkType = 1;
+    }
 }
 
 static int skipEcho; // Was to filter out layer commits during capture
