@@ -85,7 +85,9 @@ pod 'Repeato', :git => 'https://github.com/repeato-qa/ios-connector.git', :confi
 On Android Repeato connects to the app automatically. No need to install a connector.
 On iOS however, the connector needs to be installed into the app.
 
-Follow these steps:
+On newer versions of react-native there isn't really much to do. Just include the swift package via the dialog in Xcode, like described above.
+
+On older react-native projects you might have to eject the app before you can include the swift package. Here is how you do it:
 
 1. "Eject" your react-native app to generate your native iOS app project: `npx react-native eject`
 2. Open the "iOS" folder of your app 
@@ -176,3 +178,21 @@ sharpie bind -output RepeatoCaptureLibrary -namespace  RepeatoCapture -sdk iphon
 6. Include/Replace Fat Lib into project as well
 7. Call Build command for the solution
 8. Copy gererated lib from bin/iPhone and add as reference into Xamarin.iOS project
+
+## How to change the iOS connector implemenation and test it
+
+Instead of importing a swift dependency via the dialog where you paste the repo url, it's also possible to use a local clone.
+1. In XCode select your project in the left pane
+2. Navigate to "Swift Packages"
+3. Click the "+" icon
+4. paste the repository URL https://github.com/repeato-qa/ios-connector.git
+5. Select the right branch (at time of writing that's "remote-optimised")
+6. Click "Next", select "RemoteCapture" and "Finish"
+7. Clone https://github.com/repeato-qa/ios-connector.git to your disk and select the right branch
+8. Drag the "Remote" folder from finder into the iOS app project*
+9. Change the source code in the cloned repository and run your app project
+   
+* There seems to be a bug though:
+In some cases, the package will show up in the project pane, but without the disclosure triangle, and the library it contained wouldn't show up when I tried to choose it with "Link Binary with Libraries".
+The solution I found was to close the Xcode project after dropping the Swift package. On reopening the project, the disclosure triangle appeared, and everything else worked.
+This is in Xcode 12.4.
