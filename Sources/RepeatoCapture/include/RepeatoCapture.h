@@ -296,6 +296,10 @@ static BOOL lateJoiners;
 @end
 #endif
 
+@interface REPEATO_APPNAME()
+@property (strong, nonatomic) CADisplayLink *displayLink;
+@end
+
 /// The class defined by RepeatoCapture is actually a buffer
 /// used to work with the memory representation of screenshots
 @implementation REPEATO_APPNAME
@@ -569,7 +573,7 @@ static CGSize bufferSize; // current size of off-screen image buffers
     *(float *)device.remote.scale = scaleUpFactor;
     *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 126;
+    *(int *)device.remote.protocolVersion = 127;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
 
@@ -600,9 +604,15 @@ static CGSize bufferSize; // current size of off-screen image buffers
         *(int *)device.remote.appFrameWorkType = 1;
         Log(self, @"AppFrameWorkType: Flutter" );
     } else if (NSClassFromString(@"ComposeAppBase") != nil || NSClassFromString(@"Applier") != nil) {
-        // The app likely includes Kotlin Multiplatform Compose
+        // The app likely includes Kotlin Multiplatform Compose. In this case the _copyRenderLayer method fizzling approach will not work and therefore queueCapture would not be called. What we do instead is to call the method regularly
         *(int *)device.remote.appFrameWorkType = 2; // Adjust the value as needed
         Log(self, @"AppFrameWorkType: Compose" );
+        dispatch_async(dispatch_get_main_queue(), ^{
+                    REPEATO_APPNAME *instance = [self sharedInstance];
+                    instance.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
+                    instance.displayLink.preferredFramesPerSecond = 20;
+                    [instance.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+                });
     } else {
         Log(self, @"AppFrameWorkType: iOS" );
     }
@@ -991,6 +1001,10 @@ static int frameno; // count of frames captured and transmmitted
     for (NSValue *writeFp in connections)
         fclose((FILE *)writeFp.pointerValue);
     connections = nil;
+    // Invalidate the display link
+    REPEATO_APPNAME *instance = [self sharedInstance];
+    [instance.displayLink invalidate];
+    instance.displayLink = nil;
 }
 
 /// A delicate peice of code to work out when to request the capture of the screen
@@ -1035,6 +1049,20 @@ static int frameno; // count of frames captured and transmmitted
 //            lastCaptureTime = timestamp;
         });
     });
+}
+
+
++ (void)displayLinkFired:(CADisplayLink *)displayLink {
+    [self queueCapture];
+}
+
++ (instancetype)sharedInstance {
+    static REPEATO_APPNAME *sharedInstance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedInstance = [[self alloc] init];
+    });
+    return sharedInstance;
 }
 
 @end
