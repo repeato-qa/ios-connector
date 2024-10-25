@@ -569,7 +569,7 @@ static CGSize bufferSize; // current size of off-screen image buffers
     *(float *)device.remote.scale = scaleUpFactor;
     *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 125;
+    *(int *)device.remote.protocolVersion = 126;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
 
