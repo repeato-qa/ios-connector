@@ -598,6 +598,13 @@ static CGSize bufferSize; // current size of off-screen image buffers
     if (NSClassFromString(@"FlutterViewController") != nil) {
         // The app likely includes Flutter
         *(int *)device.remote.appFrameWorkType = 1;
+        Log(self, @"AppFrameWorkType: Flutter" );
+    } else if (NSClassFromString(@"ComposeAppBase") != nil || NSClassFromString(@"Applier") != nil) {
+        // The app likely includes Kotlin Multiplatform Compose
+        *(int *)device.remote.appFrameWorkType = 2; // Adjust the value as needed
+        Log(self, @"AppFrameWorkType: Compose" );
+    } else {
+        Log(self, @"AppFrameWorkType: iOS" );
     }
 }
 
