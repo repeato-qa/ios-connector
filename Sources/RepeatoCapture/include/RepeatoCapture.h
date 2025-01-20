@@ -813,7 +813,7 @@ static int frameno; // count of frames captured and transmmitted
             CGPoint location = {rpevent.touches[0].x, rpevent.touches[0].y},
                 location2 = {rpevent.touches[1].x, rpevent.touches[1].y};
             static UITextAutocorrectionType saveAuto;
-            static BOOL isTextfield, isKeyboard, isButton, isLandscape;
+            static BOOL isTextfield, isKeyboard, isButton;
             static UITextField *textField;
             static UITouch *currentTouch2;
             static UIView *currentTarget;
@@ -904,12 +904,6 @@ static int frameno; // count of frames captured and transmmitted
                 case RMTouchBegan:
                     currentTarget = nil;
                     
-                    Log(self, @"location ---> %@", NSStringFromCGPoint(location));
-                    UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
-                    isLandscape = UIInterfaceOrientationIsLandscape(orientation);
-                    
-                    Log(self, @"isLandscape ---> %@", isLandscape ? @"true" : @"false");
-                    
                     for (UIWindow *window in [UIApplication sharedApplication].windows) {
                         UIView *found = [window hitTest:location withEvent:fakeEvent];
                         if (found)
@@ -921,8 +915,6 @@ static int frameno; // count of frames captured and transmmitted
                             Log(self, @"Found webview: %@", foundWebView);
                             webView = (WKWebView *)foundWebView;
                         }
-
-                        Log(self, @"Current Target ---> %@", [currentTarget description]);
                     }
 
                     isTextfield = [currentTarget respondsToSelector:@selector(setAutocorrectionType:)];
@@ -1173,7 +1165,6 @@ static int frameno; // count of frames captured and transmmitted
 
     for (UITouch *touch in touches) {
         CGPoint loc = [touch locationInView:touch.window];
-        loc = [touch.window.layer convertPoint:loc toLayer:touch.window.layer.superlayer];
         header.phase = (RMTouchPhase)touch.phase;
         header.x = loc.x;
         header.y = loc.y;
