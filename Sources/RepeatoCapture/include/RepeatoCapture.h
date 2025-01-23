@@ -5,6 +5,7 @@
 #import <netdb.h>
 #import <netdb.h>
 #import <zlib.h>
+#import <WebKit/WebKit.h>
 
 #import "RepeatoHeaders.h"
 #import "Logger.h"
@@ -437,7 +438,7 @@ static char *connectionKey;
         FILE *writeFp = (FILE *)fp.pointerValue;
         int headerSize = 1 + sizeof device.remote;
         if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
-            Log(self, @"Could not write device info: %s", strerror(errno));        
+            Log(self, @"Could not write device info: %s", strerror(errno));
         else if (device.version == REPEATO_VERSION &&
                  fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
             Log(self, @"Could not write keylen: %s", strerror(errno));
@@ -751,6 +752,38 @@ static int frameno; // count of frames captured and transmmitted
         }
 }
 
+/// Finds the first descendant view of a given class name in a view hierarchy.
+/// @param view View to search through
+/// @param className Name of the class to search for
++ (UIView *)findDescendantViewInView:(UIView *)view withClassName:(NSString *)className {
+    if ([NSStringFromClass([view class]) isEqualToString:className]) {
+        return view;
+    }
+    for (UIView *subview in view.subviews) {
+        UIView *result = [self findDescendantViewInView:subview withClassName:className];
+        if (result) {
+            return result;
+        }
+    }
+    return nil;
+}
+
+/// Injects text into webview's HTML document. Must 'click'/focus on input before executing this function.
+/// @param text Text to be injected
+/// @param webView Web view to inject text into
++ (void)injectText:(NSString *)text intoWebView:(WKWebView *)webView {
+    NSString *js = [NSString stringWithFormat:
+            @"document.execCommand('insertText', false, '%@')", text];
+
+    [webView evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
+        if (error) {
+            NSLog(@"Error injecting text: %@", error.localizedDescription);
+        } else {
+            NSLog(@"Text injected successfully");
+        }
+    }];
+}
+
 /// Run in backgrount to process event structs coming from user interface in order to forge them
 /// @param writeFp Connection to RemoteUI server
 + (void)processEvents:(NSValue *)writeFp {
@@ -785,6 +818,7 @@ static int frameno; // count of frames captured and transmmitted
             static UITouch *currentTouch2;
             static UIView *currentTarget;
             static unsigned touchIdentifier = 120;
+            static WKWebView *webView;
             touchIdentifier++;
 
             static UITouchesEvent *event;
@@ -818,8 +852,15 @@ static int frameno; // count of frames captured and transmmitted
                     // send a new frame with the requested resolution right away
                     [self queueCapture];
                 } else {
-                    Log(self, @"Insert text");
-                    [textField insertText:sentText];
+                    if (textField != nil) {
+                        Log(self, @"Insert text");
+                        [textField insertText:sentText];
+                    } else if (webView != nil) {
+                        Log(self, @"Insert text into webview");
+                        [self injectText:sentText intoWebView:webView];
+                    } else {
+                        Log(self, @"No textfield or webview found");
+                    }
                 }
 
                 return;
@@ -862,10 +903,18 @@ static int frameno; // count of frames captured and transmmitted
 
                 case RMTouchBegan:
                     currentTarget = nil;
+                    
                     for (UIWindow *window in [UIApplication sharedApplication].windows) {
                         UIView *found = [window hitTest:location withEvent:fakeEvent];
                         if (found)
                             currentTarget = found;
+                        
+                        /// Find WebView in the window
+                        UIView *foundWebView = [self findDescendantViewInView:window withClassName:@"RNCWKWebView"];
+                        if (foundWebView) {
+                            Log(self, @"Found webview: %@", foundWebView);
+                            webView = (WKWebView *)foundWebView;
+                        }
                     }
 
                     isTextfield = [currentTarget respondsToSelector:@selector(setAutocorrectionType:)];
