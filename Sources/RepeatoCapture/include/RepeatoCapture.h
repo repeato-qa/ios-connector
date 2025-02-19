@@ -569,7 +569,7 @@ static CGSize bufferSize; // current size of off-screen image buffers
     *(float *)device.remote.scale = scaleUpFactor;
     *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
-    *(int *)device.remote.protocolVersion = 125;
+    *(int *)device.remote.protocolVersion = 128;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
 
@@ -777,7 +777,7 @@ static int frameno; // count of frames captured and transmmitted
             fakeEvent->_timestamp = timestamp;
 
             if (sentText) {
-                if([sentText isEqualToString:@"repeato:\\n"]){
+                if([sentText isEqualToString:@"repeato:enter"]){
                     if ([textField isKindOfClass:UITextView.class]) {
                         [textField insertText:@"\n"];
                     }
