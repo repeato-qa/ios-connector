@@ -431,8 +431,12 @@ static char *connectionKey;
     NSString* eventString = [NSString stringWithFormat:@"%@:%@", eventType, eventValue];
     //eventString looks like "Keyboard:0" (without double quotes)
     NSData* eventData = [eventString dataUsingEncoding:NSUTF8StringEncoding];
+    if ( writeQueue == nil )
+        return;
     dispatch_async(writeQueue, ^{
         for (NSValue *fp in connections) {
+            if ( fp == inhibitEcho )
+                continue;
             FILE *writeFp = (FILE *)fp.pointerValue;
             if (fwrite(eventData.bytes, 1, eventData.length, writeFp) != eventData.length)
                 Log(self, @"Could not write encoded: %s", strerror(errno));
