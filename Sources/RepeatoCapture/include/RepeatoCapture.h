@@ -402,6 +402,71 @@ static char *connectionKey;
     Log(self, @"Start capture at '%@' with scaleUpFactor %.2f...", addrs, scaleUpFactor);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
+    
+    //register for device events. These events will be sent to Studio via the function:
+    //+(void)transmitDeviceEventWithEventType: (NSString*)eventType andEventValue:(NSString*)eventValue
+    [self registerForDeviceEvents];
+}
+
++(void)registerForDeviceEvents
+{
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidHide:) name:UIKeyboardDidHideNotification object:nil];
+}
+
++(void)keyboardDidShow:(NSNotification *)notification
+{
+    NSLog(@"Keyboard visible");
+    [self transmitDeviceEventWithEventType:@"Keyboard" andEventValue:@"1"];
+}
+
++(void)keyboardDidHide:(NSNotification *)notification
+{
+    NSLog(@"Keyboard hidden");
+    [self transmitDeviceEventWithEventType:@"Keyboard" andEventValue:@"0"];
+}
+
++(void)transmitDeviceEventWithEventType: (NSString*)eventType andEventValue:(NSString*)eventValue
+{
+    NSString* eventString = [NSString stringWithFormat:@"%@:%@", eventType, eventValue];
+    //eventString looks like "Keyboard:0" (without double quotes)
+    NSData* eventData = [eventString dataUsingEncoding:NSUTF8StringEncoding];
+    if ( writeQueue == nil )
+        return;
+    
+    /*dispatch_async(writeQueue, ^{
+        for (NSValue *fp in connections) {
+            if ( fp == inhibitEcho )
+                continue;
+            FILE *writeFp = (FILE *)fp.pointerValue;
+            if (fwrite(eventData.bytes, 1, eventData.length, writeFp) != eventData.length)
+                Log(self, @"Could not write encoded: %s", strerror(errno));
+            else
+                fflush(writeFp);
+        }
+        
+        NSLog(@"Sent Event:%@",eventString);
+    });*/
+    
+    struct _rmframe header;
+    header.timestamp = REPEATO_NOW;
+    header.length = -5;
+
+    NSMutableData *outData = [NSMutableData new];
+    if (device.version <= HYBRID_VERSION)
+        [outData appendBytes:&header length:sizeof(header)];
+    [outData appendData:eventData];
+    dispatch_async(writeQueue, ^{
+        for (NSValue *fp in connections) {
+            if (fp == inhibitEcho)
+                continue;
+            FILE *writeFp = (FILE *)fp.pointerValue;
+            if (fwrite(outData.bytes, 1, outData.length, writeFp) != outData.length)
+                Log(self, @"Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
+            else
+                fflush(writeFp);
+        }
+    });
 }
 
 /// Connect in the backgrand rather than hold application up.
@@ -751,6 +816,8 @@ static int frameno; // count of frames captured and transmmitted
                 fflush(writeFp);
         }
 }
+
+
 
 /// Finds the first descendant view of a given class name in a view hierarchy.
 /// @param view View to search through
