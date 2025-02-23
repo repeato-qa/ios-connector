@@ -433,7 +433,8 @@ static char *connectionKey;
     NSData* eventData = [eventString dataUsingEncoding:NSUTF8StringEncoding];
     if ( writeQueue == nil )
         return;
-    dispatch_async(writeQueue, ^{
+    
+    /*dispatch_async(writeQueue, ^{
         for (NSValue *fp in connections) {
             if ( fp == inhibitEcho )
                 continue;
@@ -445,6 +446,26 @@ static char *connectionKey;
         }
         
         NSLog(@"Sent Event:%@",eventString);
+    });*/
+    
+    struct _rmframe header;
+    header.timestamp = REPEATO_NOW;
+    header.length = -5;
+
+    NSMutableData *outData = [NSMutableData new];
+    if (device.version <= HYBRID_VERSION)
+        [outData appendBytes:&header.length length:sizeof header.length];
+    [outData appendData:eventData];
+    dispatch_async(writeQueue, ^{
+        for (NSValue *fp in connections) {
+            if (fp == inhibitEcho)
+                continue;
+            FILE *writeFp = (FILE *)fp.pointerValue;
+            if (fwrite(outData.bytes, 1, outData.length, writeFp) != outData.length)
+                Log(self, @"Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
+            else
+                fflush(writeFp);
+        }
     });
 }
 
