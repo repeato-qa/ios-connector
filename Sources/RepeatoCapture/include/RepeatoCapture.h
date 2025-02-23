@@ -454,7 +454,7 @@ static char *connectionKey;
 
     NSMutableData *outData = [NSMutableData new];
     if (device.version <= HYBRID_VERSION)
-        [outData appendBytes:&header.length length:sizeof header.length];
+        [outData appendBytes:&header length:sizeof(header)];
     [outData appendData:eventData];
     dispatch_async(writeQueue, ^{
         for (NSValue *fp in connections) {
