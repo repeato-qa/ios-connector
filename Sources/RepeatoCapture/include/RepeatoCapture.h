@@ -428,6 +428,7 @@ static char *connectionKey;
 
 +(void)transmitDeviceEventWithEventType: (NSString*)eventType andEventValue:(NSString*)eventValue
 {
+    return;
     NSString* eventString = [NSString stringWithFormat:@"%@:%@", eventType, eventValue];
     //eventString looks like "Keyboard:0" (without double quotes)
     NSData* eventData = [eventString dataUsingEncoding:NSUTF8StringEncoding];
