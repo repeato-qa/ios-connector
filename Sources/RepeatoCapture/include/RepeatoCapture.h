@@ -835,6 +835,9 @@ static int frameno; // count of frames captured and transmmitted
                     else if ([textField.delegate respondsToSelector:@selector(textFieldShouldReturn:)]) {
                         [textField.delegate textFieldShouldReturn:textField];
                     }
+                    if ( textField.inputViewController != nil && [textField.inputViewController respondsToSelector:@selector(dismissKeyboard)]){
+                        [textField.inputViewController dismissKeyboard];
+                    }
                     if ([textField respondsToSelector:@selector(resignFirstResponder)]) {
                         [textField resignFirstResponder];
                     }
