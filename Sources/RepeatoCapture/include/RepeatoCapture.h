@@ -896,7 +896,17 @@ static int frameno; // count of frames captured and transmmitted
             fakeEvent->_timestamp = timestamp;
 
             if (sentText) {
-                if ([sentText isEqualToString:@"repeato:clear_text"]){
+                if([sentText isEqualToString:@"repeato:enter"]){
+                    if ([textField isKindOfClass:UITextView.class]) {
+                        [textField insertText:@"\n"];
+                        [textField resignFirstResponder];
+                    }
+                    else if ([textField.delegate respondsToSelector:@selector(textFieldShouldReturn:)]) {
+                        [textField.delegate textFieldShouldReturn:textField];
+                        [textField resignFirstResponder];
+                    }
+                }
+                else if ([sentText isEqualToString:@"repeato:clear_text"]){
                     Log(self, @"Remote asked to clear text");
                     [textField setText:@""];
                 }
