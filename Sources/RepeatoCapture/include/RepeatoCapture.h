@@ -835,6 +835,13 @@ static int frameno; // count of frames captured and transmmitted
                     else if ([textField.delegate respondsToSelector:@selector(textFieldShouldReturn:)]) {
                         [textField.delegate textFieldShouldReturn:textField];
                     }
+                    if ([textField respondsToSelector:@selector(resignFirstResponder)]) {
+                        [textField resignFirstResponder];
+                    }
+                    if ([textField respondsToSelector:@selector(endEditing)]) {
+                        [textField endEditing:TRUE];
+                    }
+                    
                 }
                 else if ([sentText isEqualToString:@"repeato:clear_text"]){
                     Log(self, @"Remote asked to clear text");
