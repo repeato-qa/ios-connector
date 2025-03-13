@@ -509,7 +509,6 @@ static char *connectionKey;
     Log(self,@"Could not connect: %s", strerror(errno));
     close(remoteSocket);
 //    NSString *message = [NSString stringWithFormat:@"%s", strerror(errno)];
-     Log(self,@"%s", strerror(errno));
     [InfoMessages.shared onError];
     return 0;
 }

@@ -188,7 +188,7 @@ bool noLaunchArgPassed = false;
     UIViewController *topVC = [[[UIApplication sharedApplication] keyWindow] rootViewController];
     if(topVC == nil) {
         if([topVC.view viewWithTag:REPEATO_INFO_VIEW_TAG] == nil) {
-            Log(self, @"Its fallback for abortted app, sometimes Repeato alert doesn't appear on second launch");
+            Log(self, @"Its fallback for aborted app, sometimes Repeato alert doesn't appear on second launch");
             [self retryPresentingAlert:1];
         }
         return;
@@ -312,7 +312,7 @@ bool noLaunchArgPassed = false;
     [self.tv setEditable:FALSE];
     [self setupBorder:self.tv borderWidth:2];
     [self roundView:self.tv radius:5];
-    [self.tv setText:@"Starting Repeato...\n"];
+    [self.tv setText:@"Initializing log...\n"];
 //    [self.tv.heightAnchor constraintLessThanOrEqualToConstant:height].active = true;
     [self.tv.heightAnchor constraintEqualToConstant:height].active = true;
     self.tv.translatesAutoresizingMaskIntoConstraints = false;
