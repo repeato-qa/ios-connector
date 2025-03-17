@@ -493,6 +493,8 @@ static char *connectionKey;
         Log(self, @"Could not open socket for injection: %s", strerror(errno));
     else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
         Log(self, @"Could not set TCP_NODELAY: %s", strerror(errno));
+    else if (setsockopt(remoteSocket, SOL_SOCKET, SO_REUSEADDR, (void *)&optval, sizeof(optval)) < 0)
+        Log(self, @"Could not set SO_REUSEADDR: %s", strerror(errno));
     else
         for (int retry = 0; retry<REPEATO_RETRIES; retry++) {
             if (retry)
