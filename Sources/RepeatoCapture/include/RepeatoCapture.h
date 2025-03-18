@@ -391,7 +391,7 @@ static BOOL lateJoiners;
 
 static id<RepeatoDelegate> repeatoDelegate;
 static NSMutableArray<NSValue *> *connections;
-static NSMutableArray<NSValue *> *sockets;
+//static NSMutableArray<NSValue *> *sockets;
 static char *connectionKey;
 static NSString* _developerHost;
 static float _scaleUpFactor;
@@ -414,7 +414,7 @@ static float _scaleUpFactor;
 + (BOOL)backgroundConnect:(NSString *)addrs {
     
     NSMutableArray *newConnections = [NSMutableArray new];
-    sockets = [NSMutableArray new];
+    //sockets = [NSMutableArray new];
     for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
         NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
         NSString *inaddr = parts[0];
@@ -429,7 +429,7 @@ static float _scaleUpFactor;
             Log(self, @"Connected to %@:%d.", inaddr, port);
             FILE *writeFp = fdopen(remoteSocket, "w");
             [newConnections addObject:[NSValue valueWithPointer:writeFp]];
-            [sockets addObject:[NSNumber numberWithInt:remoteSocket]];
+            //[sockets addObject:[NSNumber numberWithInt:remoteSocket]];
         }
     }
     if (!newConnections.count)
@@ -1077,9 +1077,9 @@ static int frameno; // count of frames captured and transmmitted
     for (NSValue *writeFp in connections)
         fclose((FILE *)writeFp.pointerValue);
     connections = nil;
-    for (NSNumber *socket in sockets)
-        shutdown(socket.intValue, SHUT_RDWR);
-    sockets = nil;
+    //for (NSNumber *socket in sockets)
+    //    shutdown(socket.intValue, SHUT_RDWR);
+    //sockets = nil;
     // Invalidate the display link
     REPEATO_APPNAME *instance = [self sharedInstance];
     [instance.displayLink invalidate];
