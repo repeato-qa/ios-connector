@@ -38,11 +38,13 @@
         #ifdef DEVELOPER_HOST
         Log(self,@"Host-address launch argument not found -> using fallback %s!", DEVELOPER_HOST);
         [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+        [self startObservingAppResign];
         #endif
         [[InfoMessages shared] noLaunchArgumentsPassed];
     } else {
         Log(self,@"Host-address: %@", hostAddress);
         [self startCapture:hostAddress scaleUpFactor:scaleUpFactor];
+        [self startObservingAppResign];
         Log(self,@"Trying to connect to %@", hostAddress);
     }
     

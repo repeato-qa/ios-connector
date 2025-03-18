@@ -392,6 +392,8 @@ static BOOL lateJoiners;
 static id<RepeatoDelegate> repeatoDelegate;
 static NSMutableArray<NSValue *> *connections;
 static char *connectionKey;
+static NSString* _developerHost;
+static float _scaleUpFactor;
 
 
 /// Initiate screen capture and processing of events from RemoteUI server
@@ -400,6 +402,8 @@ static char *connectionKey;
     scaleUpFactor = s == 0 ? 1 : s;
     [UIApplication.sharedApplication setIdleTimerDisabled:true];
     Log(self, @"Start capture at '%@' with scaleUpFactor %.2f...", addrs, scaleUpFactor);
+    _developerHost = addrs;
+    _scaleUpFactor = scaleUpFactor;
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
 }
@@ -1133,6 +1137,43 @@ static int frameno; // count of frames captured and transmmitted
     });
     return sharedInstance;
 }
+
+static id resignObserver;
+static id activeObserver;
+
++(void)startObservingAppResign{
+    resignObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification * _Nonnull notification) {
+        NSLog(@"Entered Background");
+        [self shutdown];
+        [self stopObservingAppResign];
+        [self startObservingAppActive];
+    }];
+}
+
++(void)startObservingAppActive{
+    activeObserver = [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification * _Nonnull notification) {
+        NSLog(@"Entered Foreground");
+        [self startCapture:_developerHost scaleUpFactor:_scaleUpFactor];
+        [self stopObservingAppActive];
+        [self startObservingAppResign];
+    }];
+}
+
+
++(void)stopObservingAppResign{
+    if ( resignObserver != nil )
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver:resignObserver];
+    }
+}
+
++(void)stopObservingAppActive{
+    if ( activeObserver != nil )
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver:activeObserver];
+    }
+}
+
 
 @end
 
