@@ -25,6 +25,7 @@
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
     DebugLog(self, @"Launch arguments", [arguments componentsJoinedByString:@","]);
     NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
+    NSString *cid = [[NSUserDefaults standardUserDefaults] stringForKey:@"cid"];
     float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
     
 #if TARGET_IPHONE_SIMULATOR
@@ -34,15 +35,16 @@
     }
 #endif
     if (hostAddress == NULL) {
-        DebugLog(self,@"Host-address launch argument not found. Launch arguments:", arguments);
+        DebugLog(self,@"-host-address launch argument not found. Launch arguments:", arguments);
         #ifdef DEVELOPER_HOST
-        Log(self,@"Host-address launch argument not found -> using fallback %s!", DEVELOPER_HOST);
-        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor];
+        Log(self,@"-host-address launch argument not found -> using fallback %s!", DEVELOPER_HOST);
+        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor cid:cid];
         #endif
         [[InfoMessages shared] noLaunchArgumentsPassed];
     } else {
-        Log(self,@"Host-address: %@", hostAddress);
-        [self startCapture:hostAddress scaleUpFactor:scaleUpFactor];
+        Log(self,@"-host-address: %@", hostAddress);
+        [[InfoMessages shared] showAlert];
+        [self startCapture:hostAddress scaleUpFactor:scaleUpFactor cid:cid];
         Log(self,@"Trying to connect to %@", hostAddress);
     }
     

@@ -199,7 +199,7 @@ struct _rmevent {
 #import <objc/runtime.h>
 
 @interface REPEATO_APPNAME(Client)
-+ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s;
++ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s cid:(NSString *)cid;
 + (void)shutdown;
 @end
 
@@ -396,10 +396,11 @@ static char *connectionKey;
 
 /// Initiate screen capture and processing of events from RemoteUI server
 /// @param addrs space separated list of IPV4 addresses or hostnames
-+ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s {
++ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s cid:(NSString *)cid {
     scaleUpFactor = s == 0 ? 1 : s;
+    connectionId = cid;
     [UIApplication.sharedApplication setIdleTimerDisabled:true];
-    Log(self, @"Start capture at '%@' with scaleUpFactor %.2f...", addrs, scaleUpFactor);
+    Log(self, @"Start capture at '%@' with scaleUpFactor %.2f and cid: %@", addrs, scaleUpFactor, connectionId);
     [self performSelectorInBackground:@selector(backgroundConnect:)
                            withObject:addrs];
 }
@@ -436,17 +437,13 @@ static char *connectionKey;
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
         FILE *writeFp = (FILE *)fp.pointerValue;
-        int headerSize = 1 + sizeof device.remote;
-        if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
-            Log(self, @"Could not write device info: %s", strerror(errno));
-        else if (device.version == REPEATO_VERSION &&
-                 fwrite(&keylen, 1, sizeof keylen, writeFp) != sizeof keylen)
-            Log(self, @"Could not write keylen: %s", strerror(errno));
-        else if (device.version == REPEATO_VERSION &&
-                 fwrite(connectionKey, 1, keylen, writeFp) != keylen)
-            Log(self, @"Could not write key: %s", strerror(errno));
-        else
+        NSString *registrationString = [NSString stringWithFormat:@"CONNECT:%@\n", connectionId];
+        NSData *regData = [registrationString dataUsingEncoding:NSUTF8StringEncoding];
+        if (fwrite(regData.bytes, 1, regData.length, writeFp) != regData.length) {
+            Log(self, @"Could not write registration message: %s", strerror(errno));
+        } else {
             [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+        }
     }
 
     dispatch_async(writeQueue, ^{
@@ -468,17 +465,17 @@ static char *connectionKey;
     remoteAddr.sin_family = AF_INET;
     remoteAddr.sin_port = htons(port);
 
-    if (isdigit(ipAddress[0])){
-        int valid = inet_aton(ipAddress, &remoteAddr.sin_addr);
-        Log(self, @"Adress valid (0 == invalid): %d", valid);
-    } else {
+    // Try to parse as an IP address, otherwise resolve hostname
+    if (!inet_aton(ipAddress, &remoteAddr.sin_addr)) {
         struct hostent *ent = gethostbyname2(ipAddress, remoteAddr.sin_family);
-        if (ent)
+        if (ent) {
             memcpy(&remoteAddr.sin_addr, ent->h_addr_list[0], sizeof remoteAddr.sin_addr);
-        else {
-            Log(self, @"Could not look up host '%s'", ipAddress);
+        } else {
+            Log(self, @"Could not resolve hostname '%s'", ipAddress);
             return 0;
         }
+    } else {
+        Log(self, @"Parsed IP address successfully: %s", ipAddress);
     }
 
     Log(self, @"Attempting connection to: %s:%d", ipAddress, port);
@@ -488,28 +485,45 @@ static char *connectionKey;
 /// Try to connect to specified internet address
 /// @param remoteAddr parse/looked-up address
 + (int)connectAddr:(struct sockaddr *)remoteAddr {
-    int remoteSocket, optval = 1;
-    if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0)
-        Log(self, @"Could not open socket for injection: %s", strerror(errno));
-    else if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&optval, sizeof(optval)) < 0)
-        Log(self, @"Could not set TCP_NODELAY: %s", strerror(errno));
-    else
-        for (int retry = 0; retry<REPEATO_RETRIES; retry++) {
-            if (retry)
-                [NSThread sleepForTimeInterval:1.0];
-            Log(self,@"Try #%d", retry);
-            if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
-                Log(self,@"Connected!");
-                isConnectedWithHost = true;
-                [InfoMessages.shared onConnect];
-                return remoteSocket;
-            }
+    double startTime = CFAbsoluteTimeGetCurrent();
+    int remoteSocket = 0;
+    while (CFAbsoluteTimeGetCurrent() - startTime < 10.0) {
+        if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0) {
+            Log(self, @"Could not open socket for injection: %s", strerror(errno));
+            [InfoMessages.shared onError];
+            usleep(500000); // wait 0.5 sec before retrying
+            continue;
+        }
+        if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&(int){1}, sizeof(int)) < 0) {
+            Log(self, @"Could not set TCP_NODELAY: %s", strerror(errno));
+            close(remoteSocket);
+            [InfoMessages.shared onError];
+            usleep(500000);
+            continue;
         }
 
-    Log(self,@"Could not connect: %s", strerror(errno));
-    close(remoteSocket);
-//    NSString *message = [NSString stringWithFormat:@"%s", strerror(errno)];
-    [InfoMessages.shared onError];
+        // Log remoteAddr details
+        if (remoteAddr->sa_family == AF_INET) {
+            struct sockaddr_in *addr_in = (struct sockaddr_in *)remoteAddr;
+            Log(self, @"remoteAddr: family=%d, port=%d, addr=%s",
+                addr_in->sin_family, ntohs(addr_in->sin_port), inet_ntoa(addr_in->sin_addr));
+        } else {
+            Log(self, @"remoteAddr: Unsupported family %d", remoteAddr->sa_family);
+        }
+
+        Log(self, @"Try to connect ttt");
+        if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
+            Log(self, @"Connected!");
+            isConnectedWithHost = true;
+            [InfoMessages.shared onConnect];
+            return remoteSocket;
+        }
+
+        Log(self, @"Could not connect: %s", strerror(errno));
+        close(remoteSocket);
+        [InfoMessages.shared onError];
+        usleep(500000);
+    }
     return 0;
 }
 
@@ -622,6 +636,7 @@ static int skipEcho; // Was to filter out layer commits during capture
 static BOOL capturing; // Am in the middle of capturing
 static BOOL isStreamEnabled = true;
 static float scaleUpFactor = 0.5; // can be remote controlled
+static NSString* connectionId;
 static NSTimeInterval mostRecentScreenUpdate; // last window layer update
 static NSTimeInterval lastCaptureTime; // last time capture was forced
 static NSArray *buffers; // off-screen buffers use in encoding images
@@ -827,7 +842,16 @@ static int frameno; // count of frames captured and transmmitted
             fakeEvent->_timestamp = timestamp;
 
             if (sentText) {
-                if([sentText isEqualToString:@"repeato:enter"]){
+                if ([sentText hasPrefix:@"ERROR:"]) {
+                    Log(self, @"Error received from remote: %@", sentText);
+                    isConnectedWithHost = false;
+                    fclose((FILE *)writeFp.pointerValue);
+                    [connections removeObject:writeFp];
+                    [InfoMessages.shared onDisconnect];
+                    [InfoMessages.shared cancelOperation];
+                    return;
+                }
+                else if([sentText isEqualToString:@"repeato:enter"]){
                     if ([textField isKindOfClass:UITextView.class]) {
                         [textField insertText:@"\n"];
                     }

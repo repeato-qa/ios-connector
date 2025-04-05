@@ -9,7 +9,7 @@
 #import <UIKit/UIKit.h>
 #import "Logger.h"
 
-#define REPEATO_INFO_ABORT_DELAY 5
+#define REPEATO_INFO_ABORT_DELAY 15
 #define REPEATO_INFO_VIEW_TAG 1022
 #define REPEATO_INFO_ALERT_PADDING 20
 #define REPEATO_INFO_ALERT_INTERNAL_PADDING 8
@@ -60,15 +60,10 @@ bool noLaunchArgPassed = false;
     }
     Logger.shared.delegate = self;
     seconds = 0;
-    logsHistory = @"";
+    //logsHistory = @"";
     dispatch_async(dispatch_get_main_queue(), ^{
         [self setupAlertUI];
     });
-}
-
--(void) initAlertWithCountAndCancelOption {
-    [self initAlert];
-    [self noLaunchArgumentsPassed];
 }
 
 -(void) showAlert {
@@ -139,7 +134,7 @@ bool noLaunchArgPassed = false;
     #if TARGET_IPHONE_SIMULATOR
         [self initAlert];
     #else
-        [self initAlertWithCountAndCancelOption];
+        [self initAlert];
     #endif
 }
 
