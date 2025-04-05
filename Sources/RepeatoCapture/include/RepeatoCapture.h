@@ -27,7 +27,6 @@
 
 // Various wire formats used.
 //#define REPEATO_NOKEY 3 // Original format
-#define REPEATO_VERSION 4 // Sends source file path for security check
 //#define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
 #define HYBRID_VERSION 2 // minicap but starting with "Remote" header
 
@@ -124,9 +123,10 @@ typedef NS_ENUM(int, RMTouchPhase) {
 /// struct sent from client when it connects to rendering server
 /// Can be either original Remote format or "minicap".
 struct _rmdevice {
-    char version;
+    char clientType[4];
     union {
         struct {
+            char connectionId[200];
             char machine[24];
             char appname[64];
             char appvers[24];
@@ -142,6 +142,7 @@ struct _rmdevice {
             char magic[4]; // int
         } remote;
     };
+    char reserved[32];
 };
 
 /// struct send before each iage frame sen to render server
@@ -437,13 +438,13 @@ static char *connectionKey;
     int32_t keylen = (int)strlen(connectionKey);
     for (NSValue *fp in newConnections) {
         FILE *writeFp = (FILE *)fp.pointerValue;
-        NSString *registrationString = [NSString stringWithFormat:@"CONNECT:%@\n", connectionId];
-        NSData *regData = [registrationString dataUsingEncoding:NSUTF8StringEncoding];
-        if (fwrite(regData.bytes, 1, regData.length, writeFp) != regData.length) {
-            Log(self, @"Could not write registration message: %s", strerror(errno));
-        } else {
-            [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
-        }
+     
+        int headerSize = 1 + sizeof device.remote;
+        if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
+            Log(self, @"Could not write device info: %s", strerror(errno));           
+            
+        [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
+    
     }
 
     dispatch_async(writeQueue, ^{
@@ -569,7 +570,8 @@ static CGSize bufferSize; // current size of off-screen image buffers
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
 
 
-    device.version = HYBRID_VERSION;
+// set device.clientType character array to "IOSC":
+    strncpy(device.clientType, "IOSC", sizeof(device.clientType) - 1);
 
     // prepare remote header
     *(int *)device.remote.magic = REPEATO_MAGIC;
@@ -588,6 +590,7 @@ static CGSize bufferSize; // current size of off-screen image buffers
     *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
     
     *(int *)device.remote.protocolVersion = 128;
+    strncpy(device.remote.connectionId, [connectionId UTF8String], sizeof(device.remote.connectionId) - 1);
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
 
@@ -754,9 +757,9 @@ static int frameno; // count of frames captured and transmmitted
         for (NSValue *fp in connections) {
             FILE *writeFp = (FILE *)fp.pointerValue;
             uint32_t frameSize = (uint32_t)encoded.length;
-            int frameHeaderSize = device.version <= HYBRID_VERSION ?
+            int frameHeaderSize = true ?
                                     sizeof frameSize : sizeof frame;
-            if (fwrite(device.version <= HYBRID_VERSION ? (void *)&frameSize :
+            if (fwrite(true ? (void *)&frameSize :
                       (void *)&frame, 1, frameHeaderSize, writeFp) != frameHeaderSize)
                 Log(self, @"Could not write frame: %s", strerror(errno));
             else if (fwrite(encoded.bytes, 1, encoded.length, writeFp) != encoded.length)
@@ -1204,8 +1207,8 @@ static int frameno; // count of frames captured and transmmitted
     header.length = -(int)touches.count;
 
     NSMutableData *out = [NSMutableData new];
-    if (device.version <= HYBRID_VERSION)
-        [out appendBytes:&header.length length:sizeof header.length];
+    
+    [out appendBytes:&header.length length:sizeof header.length];
 
     for (UITouch *touch in touches) {
         CGPoint loc = [touch locationInView:touch.window];
