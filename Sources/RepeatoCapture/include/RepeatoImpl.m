@@ -24,29 +24,14 @@
     [[InfoMessages shared] showAlert];
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
     DebugLog(self, @"Launch arguments", [arguments componentsJoinedByString:@","]);
-    NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
+    //NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
     NSString *cid = [[NSUserDefaults standardUserDefaults] stringForKey:@"cid"];
     float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
     
-#if TARGET_IPHONE_SIMULATOR
-    // on simulators we fall back to localhost, since the DEVELOPER_HOST (Host.current().name) turned out to be slightly unreliable
-    if (hostAddress == NULL) {
-        hostAddress = @"localhost";
-    }
-#endif
-    if (hostAddress == NULL) {
-        DebugLog(self,@"-host-address launch argument not found. Launch arguments:", arguments);
-        #ifdef DEVELOPER_HOST
-        Log(self,@"-host-address launch argument not found -> using fallback %s!", DEVELOPER_HOST);
-        [self startCapture:@DEVELOPER_HOST scaleUpFactor:scaleUpFactor cid:cid];
-        #endif
-        [[InfoMessages shared] noLaunchArgumentsPassed];
-    } else {
-        Log(self,@"-host-address: %@", hostAddress);
-        [[InfoMessages shared] showAlert];
-        [self startCapture:hostAddress scaleUpFactor:scaleUpFactor cid:cid];
-        Log(self,@"Trying to connect to %@", hostAddress);
-    }
-    
+    //#if TARGET_IPHONE_SIMULATOR
+        // on simulators we fall back to localhost, since the DEVELOPER_HOST (Host.current().name) turned out to be slightly unreliable
+    //#endif
+    [self startCaptureWithScaleUpFactor:scaleUpFactor cid:cid];
+  
 }
 @end

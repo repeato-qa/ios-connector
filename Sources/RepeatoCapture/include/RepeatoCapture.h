@@ -1,40 +1,28 @@
+// RepeatoConnector.h
 #import <sys/sysctl.h>
 #import <netinet/tcp.h>
 #import <sys/socket.h>
 #import <arpa/inet.h>
 #import <netdb.h>
-#import <netdb.h>
 #import <zlib.h>
 #import <WebKit/WebKit.h>
+#import <ifaddrs.h>
 
 #import "RepeatoHeaders.h"
 #import "Logger.h"
 #import "InfoMessages.h"
 
 #ifndef REPEATO_PORT
-//#define INJECTION_PORT 31442
-//#define APPCODE_PORT 31444
-//#define XPROBE_PORT 31448
 #define REPEATO_PORT 31449
 #endif
 
 #ifndef REPEATO_APPNAME
 #define REPEATO_APPNAME RepeatoCapture
 #endif
+
 #define REPEATO_MAGIC -141414141
-//#define REPEATO_MINDIFF (4*sizeof(rmencoded_t))
-//#define REPEATO_COMPRESSED_OFFSET 1000000000
-
-// Various wire formats used.
-//#define REPEATO_NOKEY 3 // Original format
-//#define MINICAP_VERSION 1 // https://github.com/openstf/minicap#usage
-#define HYBRID_VERSION 2 // minicap but starting with "Remote" header
-
-// May be used for security
-#define REPEATO_KEY @__FILE__
 #define REPEATO_XOR 0xc5
 
-// Times coordinate-resolution to capture.
 #ifndef REPEATO_OVERSAMPLE
 #ifndef REPEATO_HYBRID
 #define REPEATO_OVERSAMPLE 1.0
@@ -52,22 +40,16 @@
 #endif
 
 #ifdef REPEATO_HYBRID
-// Wait for screen to settle before capture
 #ifndef REPEATO_DEFER
 #define REPEATO_DEFER 0.5
 #endif
-
-// Only wait this long for screen to settle
 #ifndef REPEATO_MAXDEFER
 #define REPEATO_MAXDEFER 0.1
 #endif
 #else
-// Wait for screen to settle before capture
 #ifndef REPEATO_DEFER
 #define REPEATO_DEFER 0.5
 #endif
-
-// Only wait this long for screen to settle
 #ifndef REPEATO_MAXDEFER
 #define REPEATO_MAXDEFER 0.1
 #endif
@@ -105,7 +87,6 @@ static BOOL repeatoLegacy = FALSE;
 typedef unsigned rmpixel_t;
 typedef unsigned rmencoded_t;
 
-/// Shaows UITouchPhase enum but available to Appkit code in server.
 typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchBeganDouble = -1,
     RMTouchBegan = 0,
@@ -120,13 +101,10 @@ typedef NS_ENUM(int, RMTouchPhase) {
     RMTouchInsertText = 100
 };
 
-/// struct sent from client when it connects to rendering server
-/// Can be either original Remote format or "minicap".
 struct _rmdevice {
-    char clientType[4];
+    char version;
     union {
         struct {
-            char connectionId[200];
             char machine[24];
             char appname[64];
             char appvers[24];
@@ -136,8 +114,8 @@ struct _rmdevice {
             char protocolVersion[4];// int
             char displaySize[12]; // 9999x9999
             char deviceName[24];
-            char systemVersion[4]; //float
-            char appFrameWorkType[4]; //int 0: default, 1: flutter
+            char systemVersion[4]; // float
+            char appFrameWorkType[4]; // int 0: default, 1: flutter, 2: compose
             char expansion[16];
             char magic[4]; // int
         } remote;
@@ -145,37 +123,26 @@ struct _rmdevice {
     char reserved[32];
 };
 
-/// struct send before each iage frame sen to render server
 struct _rmframe {
     NSTimeInterval timestamp;
     union {
-        /// image paramters
         struct { float width, height, imageScale; };
-        /// If length < 0, retails of a recorded touch
         struct { float x, y; RMTouchPhase phase; };
     };
-    /// length of image data or if < 0 -touch number
     int length;
 };
 
-///// If image is compressed, it's uncompressed length is sent
-//struct _rmcompress {
-//    unsigned bytes; unsigned char data[1];
-//};
-
 #define RMMAX_TOUCHES 2
 
-/// Struct sent from UI of server to replay touches in the client
 struct _rmevent {
     NSTimeInterval timestamp;
     RMTouchPhase phase;
     union {
         struct { float x, y; } touches[RMMAX_TOUCHES];
     };
-    /* int padded; */
 };
 
-@interface REPEATO_APPNAME: NSObject {
+@interface REPEATO_APPNAME : NSObject {
 @package
     rmpixel_t *buffer, *buffend;
     CGContextRef cg;
@@ -190,8 +157,6 @@ struct _rmevent {
 - (void)remoteConnected:(BOOL)status;
 @end
 
-#if defined(REPEATO_IMPL) || \
-    defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && defined(DEBUG)
 
 #ifndef __IPHONE_OS_VERSION_MIN_REQUIRED
 #import <Cocoa/Cocoa.h>
@@ -200,75 +165,63 @@ struct _rmevent {
 #import <objc/runtime.h>
 
 @interface REPEATO_APPNAME(Client)
-+ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s cid:(NSString *)cid;
+// Changed startCapture method to no longer require an address list
++ (void)startCaptureWithScaleUpFactor:(float)s cid:(NSString *)cid;
++ (BOOL)startListening;
 + (void)shutdown;
 @end
 
 static NSTimeInterval timestamp0;
 static UITouch *currentTouch;
 static NSSet *currentTouches;
-static BOOL lateJoiners;
 
 @interface RCFakeEvent: UIEvent {
 @public
     NSTimeInterval _timestamp;
 }
-
 @end
 
 @implementation RCFakeEvent
-
 - (instancetype)init {
     if ((self = [super init])) {
         _timestamp = REPEATO_NOW - timestamp0;
     }
     return self;
 }
-
 - (NSTimeInterval)timestamp {
     return _timestamp;
 }
-
 - (UITouch *)_firstTouchForView:(UIView *)view {
     RMDebug(@"_firstTouchForView: %@", view);
     return currentTouch;
 }
-
 - (NSSet *)touchesForView:(UIView *)view {
     RMDebug(@"touchesForWindow:%@", view);
     return currentTouches;
 }
-
 - (NSSet *)touchesForWindow:(UIWindow *)window {
     RMDebug(@"touchesForWindow:%@", window);
     return currentTouches;
 }
-
 - (NSSet *)touchesForGestureRecognizer:(UIGestureRecognizer *)rec {
     RMDebug(@"touchesForGestureRecognizer:%@", rec);
     return currentTouches;
 }
-
 - (void)_removeTouch:(UITouch *)touch fromGestureRecognizer:(UIGestureRecognizer *)rec {
     RMDebug(@"_removeTouch:%@ fromGestureRecognizer:%@", touch, rec);
 }
-
 - (NSSet *)allTouches {
     return currentTouches;
 }
-
 - (void)_addWindowAwaitingLatentSystemGestureNotification:(id)a0 deliveredToEventWindow:(id)a1 {
     RMDebug(@"_addWindowAwaitingLatentSystemGestureNotification:%@ deliveredToEventWindow:%@", a0, a1);
 }
-
 - (NSUInteger)_buttonMask {
     return 0;
 }
-
 - (UIEventType)type {
     return (UIEventType)0;
 }
-
 @end
 
 @interface UIView(Description)
@@ -276,18 +229,16 @@ static BOOL lateJoiners;
 @end
 
 @interface NSObject(ForwardReference)
-
 - (void *)_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2;
 - (void *)in_copyRenderLayer:(void *)a0 layerFlags:(unsigned)a1 commitFlags:(unsigned *)a2;
-
 - (void)_didCommitLayer:(void *)a0;
 - (void)in_didCommitLayer:(void *)a0;
-
 @end
 
 @interface UIApplication(ForwardReference)
 - (void)in_sendEvent:(UIEvent *)event;
 @end
+
 @implementation UITouch(Identifier)
 - (void)_setTouchIdentifier:(unsigned int)ident {
     Ivar ivar = class_getInstanceVariable([self class], "_touchIdentifier");
@@ -302,14 +253,13 @@ static BOOL lateJoiners;
 @property (strong, nonatomic) CADisplayLink *displayLink;
 @end
 
-/// The class defined by RepeatoCapture is actually a buffer
-/// used to work with the memory representation of screenshots
 @implementation REPEATO_APPNAME
 
 - (instancetype)initFrame:(const struct _rmframe *)frame {
     if ((self = [super init])) {
-        CGSize size = {frame->width*frame->imageScale, frame->height*frame->imageScale};
-        int bitsPerComponent = 8, bytesPerRow = bitsPerComponent/8*4 * (int)size.width;
+        CGSize size = {frame->width * frame->imageScale, frame->height * frame->imageScale};
+        int bitsPerComponent = 8;
+        int bytesPerRow = (bitsPerComponent / 8) * 4 * (int)size.width;
         int bufferSize = bytesPerRow * (int)size.height;
         cg = CGBitmapContextCreate(NULL, size.width, size.height, bitsPerComponent,
                                    bytesPerRow, CGColorSpaceCreateDeviceRGB(),
@@ -319,24 +269,20 @@ static BOOL lateJoiners;
         if (repeatoLegacy) {
             CGContextTranslateCTM(cg, 0, size.height);
             CGContextScaleCTM(cg, frame->imageScale, -frame->imageScale);
-        }
-        else
+        } else {
             CGContextScaleCTM(cg, frame->imageScale, frame->imageScale);
+        }
     }
     return self;
 }
 
-/// Made-up image encoding format
-/// @param prevbuff previous image
 - (NSData *)subtractAndEncode:(REPEATO_APPNAME *)prevbuff {
-    unsigned tmpsize = 64*1024;
+    unsigned tmpsize = 64 * 1024;
     rmencoded_t *tmp = (rmencoded_t *)malloc(tmpsize * sizeof *tmp), *end = tmp + tmpsize;
-
     rmencoded_t *out = tmp, count = 0, expectedDiff = 0, check = 0;
     *out++ = prevbuff == nil;
-
     for (const rmpixel_t *curr = buffer, *prev = prevbuff ? prevbuff->buffer : NULL;
-             curr < buffend; check += *curr, curr++) {
+         curr < buffend; check += *curr, curr++) {
         rmpixel_t ref = (prev ? *prev++ : 0), diff = *curr - ref - expectedDiff;
         if (!diff && curr != buffer)
             count++;
@@ -350,9 +296,7 @@ static BOOL lateJoiners;
                 }
                 count = 0;
             }
-
             *out++ = diff & 0xffffff00;
-
             if (out + 4 >= end) {
                 size_t ptr = out - tmp;
                 tmpsize *= 1.5;
@@ -361,10 +305,8 @@ static BOOL lateJoiners;
                 end = tmp + tmpsize;
             }
         }
-
         expectedDiff = *curr - ref;
     }
-
     if (count) {
         if (count < 0xff)
             out[-1] |= count;
@@ -373,13 +315,10 @@ static BOOL lateJoiners;
             *out++ = count;
         }
     }
-
     *out++ = check;
-
     return [NSData dataWithBytesNoCopy:tmp length:(char *)out - (char *)tmp freeWhenDone:YES];
 }
 
-/// Convert buffer into an image.
 - (CGImageRef)cgImage {
     return CGBitmapContextCreateImage(cg);
 }
@@ -388,165 +327,77 @@ static BOOL lateJoiners;
     CGContextRelease(cg);
 }
 
-#ifdef __IPHONE_OS_VERSION_MIN_REQUIRED
-
+// Static variables shared by the connector
 static id<RepeatoDelegate> repeatoDelegate;
-static NSMutableArray<NSValue *> *connections;
-static char *connectionKey;
-
-
-/// Initiate screen capture and processing of events from RemoteUI server
-/// @param addrs space separated list of IPV4 addresses or hostnames
-+ (void)startCapture:(NSString *)addrs scaleUpFactor:(float)s cid:(NSString *)cid {
-    scaleUpFactor = s == 0 ? 1 : s;
-    connectionId = cid;
-    [UIApplication.sharedApplication setIdleTimerDisabled:true];
-    Log(self, @"Start capture at '%@' with scaleUpFactor %.2f and cid: %@", addrs, scaleUpFactor, connectionId);
-    [self performSelectorInBackground:@selector(backgroundConnect:)
-                           withObject:addrs];
-}
-
-/// Connect in the backgrand rather than hold application up.
-/// @param addrs space separate list of IPV4 addresses or hostnames
-+ (BOOL)backgroundConnect:(NSString *)addrs {
-    
-    NSMutableArray *newConnections = [NSMutableArray new];
-    for (NSString *addr in [addrs componentsSeparatedByString:@" "]) {
-        NSArray<NSString *> *parts = [addr componentsSeparatedByString:@":"];
-        NSString *inaddr = parts[0];
-        in_port_t port = REPEATO_PORT;
-        if (parts.count > 1)
-            port = (in_port_t)parts[1].intValue;
-            Log(self, @"Connecting to %@:%d...", inaddr, port);
-        int remoteSocket = [self connectIPV4:inaddr.UTF8String port:port];
-        if (remoteSocket) {
-            isConnectedWithHost = true;
-            [InfoMessages.shared onConnect];
-            Log(self, @"Connected to %@:%d.", inaddr, port);
-            FILE *writeFp = fdopen(remoteSocket, "w");
-            [newConnections addObject:[NSValue valueWithPointer:writeFp]];
-        }
-    }
-    if (!newConnections.count)
-        return FALSE;
-
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        [self initCapture];
-    });
-
-    int32_t keylen = (int)strlen(connectionKey);
-    for (NSValue *fp in newConnections) {
-        FILE *writeFp = (FILE *)fp.pointerValue;
-     
-        int headerSize = 1 + sizeof device.remote;
-        if (fwrite(&device, 1, headerSize, writeFp) != headerSize)
-            Log(self, @"Could not write device info: %s", strerror(errno));           
-            
-        [self performSelectorInBackground:@selector(processEvents:) withObject:fp];
-    
-    }
-
-    dispatch_async(writeQueue, ^{
-        [connections addObjectsFromArray:newConnections];
-        [self queueCapture];
-        lateJoiners = TRUE;
-    });
-    [repeatoDelegate remoteConnected:TRUE];
-    return TRUE;
-}
-
-/// Parse addres and attempt to connect to a "RemoteUI" server
-/// @param ipAddress IPV4 address or hostname
-/// @param port well known port for remote server
-+ (int)connectIPV4:(const char *)ipAddress port:(in_port_t)port {
-    static struct sockaddr_in remoteAddr;
-
-    remoteAddr.sin_len = sizeof remoteAddr;
-    remoteAddr.sin_family = AF_INET;
-    remoteAddr.sin_port = htons(port);
-
-    // Try to parse as an IP address, otherwise resolve hostname
-    if (!inet_aton(ipAddress, &remoteAddr.sin_addr)) {
-        struct hostent *ent = gethostbyname2(ipAddress, remoteAddr.sin_family);
-        if (ent) {
-            memcpy(&remoteAddr.sin_addr, ent->h_addr_list[0], sizeof remoteAddr.sin_addr);
-        } else {
-            Log(self, @"Could not resolve hostname '%s'", ipAddress);
-            return 0;
-        }
-    } else {
-        Log(self, @"Parsed IP address successfully: %s", ipAddress);
-    }
-
-    Log(self, @"Attempting connection to: %s:%d", ipAddress, port);
-    return [self connectAddr:(struct sockaddr *)&remoteAddr];
-}
-
-/// Try to connect to specified internet address
-/// @param remoteAddr parse/looked-up address
-+ (int)connectAddr:(struct sockaddr *)remoteAddr {
-    double startTime = CFAbsoluteTimeGetCurrent();
-    int remoteSocket = 0;
-    while (CFAbsoluteTimeGetCurrent() - startTime < 10.0) {
-        if ((remoteSocket = socket(remoteAddr->sa_family, SOCK_STREAM, 0)) < 0) {
-            Log(self, @"Could not open socket for injection: %s", strerror(errno));
-            [InfoMessages.shared onError];
-            usleep(500000); // wait 0.5 sec before retrying
-            continue;
-        }
-        if (setsockopt(remoteSocket, IPPROTO_TCP, TCP_NODELAY, (void *)&(int){1}, sizeof(int)) < 0) {
-            Log(self, @"Could not set TCP_NODELAY: %s", strerror(errno));
-            close(remoteSocket);
-            [InfoMessages.shared onError];
-            usleep(500000);
-            continue;
-        }
-
-        // Log remoteAddr details
-        if (remoteAddr->sa_family == AF_INET) {
-            struct sockaddr_in *addr_in = (struct sockaddr_in *)remoteAddr;
-            Log(self, @"remoteAddr: family=%d, port=%d, addr=%s",
-                addr_in->sin_family, ntohs(addr_in->sin_port), inet_ntoa(addr_in->sin_addr));
-        } else {
-            Log(self, @"remoteAddr: Unsupported family %d", remoteAddr->sa_family);
-        }
-
-        Log(self, @"Try to connect ttt");
-        if (connect(remoteSocket, remoteAddr, remoteAddr->sa_len) >= 0){
-            Log(self, @"Connected!");
-            isConnectedWithHost = true;
-            [InfoMessages.shared onConnect];
-            return remoteSocket;
-        }
-
-        Log(self, @"Could not connect: %s", strerror(errno));
-        close(remoteSocket);
-        [InfoMessages.shared onError];
-        usleep(500000);
-    }
-    return 0;
-}
-
-static dispatch_queue_t writeQueue; // queue to synchronise outgoing writes
-static struct _rmdevice device; // header sent to RemoteUI server on connect
+static dispatch_queue_t writeQueue;
+static struct _rmdevice device;
+static int skipEcho; // Was to filter out layer commits during capture
+static BOOL capturing; // Am in the middle of capturing
+static BOOL isStreamEnabled = true;
+static float scaleUpFactor = 0.5; // can be remote controlled
+static NSTimeInterval mostRecentScreenUpdate; // last window layer update
+static NSTimeInterval lastCaptureTime; // last time capture was forced
+static NSArray *buffers; // off-screen buffers use in encoding images
+static int frameno; // count of frames captured and transmitted
 static NSValue *inhibitEcho; // prevent events from server going back to server
 static Class UIWindowLayer; // Use to filter for full window layer updates
 static UITouch *realTouch; // An actual UITouch recycled for forging events
 static CGSize bufferSize; // current size of off-screen image buffers
+static int clientSocket;
 
-/// Initialse static viables for capture an swizzle in replacement
-/// methods for intercepting screen updates and device events
-/// Setup device header struct sent on opening the connection.
-+ (void)initCapture {
-    connections = [NSMutableArray new];
+// Initialize capture and device header; this is unchanged from previous behavior.
++ (void)initHeaderData {
+    writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
+    // Initialize device header values:
+    // set device.version to 2
+    device.version = 2;
+
+    *(int *)device.remote.magic = REPEATO_MAGIC;
+    size_t size = sizeof device.remote.machine - 1;
+    sysctlbyname("hw.machine", device.remote.machine, &size, NULL, 0);
+    device.remote.machine[size] = '\0';
+    NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
+    strncpy(device.remote.appname, ([infoDict[@"CFBundleIdentifier"] UTF8String] ?: ""), sizeof(device.remote.appname) - 1);
+    strncpy(device.remote.appvers, ([infoDict[@"CFBundleShortVersionString"] UTF8String] ?: ""), sizeof(device.remote.appvers) - 1);
+    gethostname(device.remote.hostname, sizeof(device.remote.hostname) - 1);
+    *(float *)device.remote.scale = scaleUpFactor;
+    *(int *)device.remote.isIPad = ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    *(int *)device.remote.protocolVersion = 128;
+    CGRect screenBounds = [self screenBounds];
+    CGSize screenSize = screenBounds.size;
+    NSString *displaySize = [NSString stringWithFormat:@"%ix%i", (int)screenSize.width, (int)screenSize.height];
+    strncpy(device.remote.displaySize, [displaySize UTF8String], sizeof(device.remote.displaySize) - 1);
+    
+    __block NSString *deviceName;
+    __block float systemVersion;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        deviceName = [[UIDevice currentDevice] name];
+        systemVersion = [[[UIDevice currentDevice] systemVersion] floatValue];
+    });
+    strncpy(device.remote.deviceName, [deviceName UTF8String], sizeof(device.remote.deviceName) - 1);
+    *(float *)device.remote.systemVersion = systemVersion;
+    if (NSClassFromString(@"FlutterViewController") != nil) {
+        *(int *)device.remote.appFrameWorkType = 1;
+        Log(self, @"AppFrameWorkType: Flutter");
+    } else if (NSClassFromString(@"ComposeAppBase") != nil || NSClassFromString(@"Applier") != nil) {
+        *(int *)device.remote.appFrameWorkType = 2;
+        Log(self, @"AppFrameWorkType: Compose");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            REPEATO_APPNAME *instance = [self sharedInstance];
+            instance.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
+            instance.displayLink.preferredFramesPerSecond = 20;
+            [instance.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+        });
+    } else {
+        Log(self, @"AppFrameWorkType: iOS");
+    }
+}
+
++ (void) initFrameScheduler {
     timestamp0 = REPEATO_NOW;
     writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
     UIWindowLayer = objc_getClass("UIWindowLayer");
-    connectionKey = strdup(REPEATO_KEY.UTF8String);
-    for (size_t i=0, keylen = (int)strlen(connectionKey); i<keylen; i++)
-        connectionKey[i] ^= REPEATO_XOR;
-
+    
     __block NSArray<UIScreen *> *screens;
     do {
         dispatch_sync(dispatch_get_main_queue(), ^{
@@ -556,111 +407,159 @@ static CGSize bufferSize; // current size of off-screen image buffers
             [NSThread sleepForTimeInterval:.5];
     } while (!screens.count);
 
-#if 01
+
     method_exchangeImplementations(
         class_getInstanceMethod(CALayer.class, @selector(_copyRenderLayer:layerFlags:commitFlags:)),
         class_getInstanceMethod(CALayer.class, @selector(in_copyRenderLayer:layerFlags:commitFlags:)));
-#else
-    method_exchangeImplementations(
-        class_getInstanceMethod(CALayer.class, @selector(_didCommitLayer:)),
-        class_getInstanceMethod(CALayer.class, @selector(in_didCommitLayer:)));
-#endif
+
     method_exchangeImplementations(
         class_getInstanceMethod(UIApplication.class, @selector(sendEvent:)),
         class_getInstanceMethod(UIApplication.class, @selector(in_sendEvent:)));
 
-
-// set device.clientType character array to "IOSC":
-    strncpy(device.clientType, "IOSC", sizeof(device.clientType) - 1);
-
-    // prepare remote header
-    *(int *)device.remote.magic = REPEATO_MAGIC;
-
-    size_t size = sizeof device.remote.machine-1;
-    sysctlbyname("hw.machine", device.remote.machine, &size, NULL, 0);
-    device.remote.machine[size] = '\000';
-
-    NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
-    strncpy(device.remote.appname, [infoDict[@"CFBundleIdentifier"] UTF8String]?:"", sizeof device.remote.appname-1);
-    strncpy(device.remote.appvers, [infoDict[@"CFBundleShortVersionString"] UTF8String]?:"", sizeof device.remote.appvers-1);
-    
-    gethostname(device.remote.hostname, sizeof device.remote.hostname-1);
-
-    *(float *)device.remote.scale = scaleUpFactor;
-    *(int *)device.remote.isIPad = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad;
-    
-    *(int *)device.remote.protocolVersion = 128;
-    strncpy(device.remote.connectionId, [connectionId UTF8String], sizeof(device.remote.connectionId) - 1);
-    CGRect screenBounds = [self screenBounds];
-    CGSize screenSize = screenBounds.size;
-
-    NSString *displaySize = [NSString stringWithFormat:@"%ix%i", (int) screenSize.width, (int) screenSize.height];
-    strncpy(device.remote.displaySize, [displaySize UTF8String], sizeof device.remote.displaySize-1);
-
-    
-    
-    __block NSString *deviceName;
-    __block float systemVersion;
-
-    dispatch_sync(dispatch_get_main_queue(), ^{
-        deviceName = [[UIDevice currentDevice] name];
-        NSString *systemVersionString = [[UIDevice currentDevice] systemVersion];
-        systemVersion = [systemVersionString floatValue];
-    });
-
-    strncpy(device.remote.deviceName, [deviceName UTF8String], sizeof(device.remote.deviceName) - 1);
-    
-    //device model can't be fetched reliably
-    //NSString *deviceModel = [self getDeviceModel];
-    //strncpy(device.remote.deviceModel, [deviceModel UTF8String], sizeof(device.remote.deviceModel) - 1);
-    
-    //strncpy(device.remote.systemVersion, [systemVersion UTF8String], sizeof(device.remote.systemVersion) - 1);
-    *(float *)device.remote.systemVersion = systemVersion;
-    if (NSClassFromString(@"FlutterViewController") != nil) {
-        // The app likely includes Flutter
-        *(int *)device.remote.appFrameWorkType = 1;
-        Log(self, @"AppFrameWorkType: Flutter" );
-    } else if (NSClassFromString(@"ComposeAppBase") != nil || NSClassFromString(@"Applier") != nil) {
-        // The app likely includes Kotlin Multiplatform Compose. In this case the _copyRenderLayer method fizzling approach will not work and therefore queueCapture would not be called. What we do instead is to call the method regularly
-        *(int *)device.remote.appFrameWorkType = 2; // Adjust the value as needed
-        Log(self, @"AppFrameWorkType: Compose" );
-        dispatch_async(dispatch_get_main_queue(), ^{
-                    REPEATO_APPNAME *instance = [self sharedInstance];
-                    instance.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
-                    instance.displayLink.preferredFramesPerSecond = 20;
-                    [instance.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
-                });
-    } else {
-        Log(self, @"AppFrameWorkType: iOS" );
-    }
 }
 
-static int skipEcho; // Was to filter out layer commits during capture
-static BOOL capturing; // Am in the middle of capturing
-static BOOL isStreamEnabled = true;
-static float scaleUpFactor = 0.5; // can be remote controlled
-static NSString* connectionId;
-static NSTimeInterval mostRecentScreenUpdate; // last window layer update
-static NSTimeInterval lastCaptureTime; // last time capture was forced
-static NSArray *buffers; // off-screen buffers use in encoding images
-static int frameno; // count of frames captured and transmmitted
 
-/// Best effeort to get screen dimensions, even for iOS on M1 Mac
 + (CGRect)screenBounds {
     CGRect bounds = CGRectZero;
-    while (TRUE) {
-        for (UIWindow *window in [UIApplication sharedApplication].windows)  {
+    while (YES) {
+        for (UIWindow *window in [UIApplication sharedApplication].windows) {
             if (window.bounds.size.height > bounds.size.height)
                 bounds = window.bounds;
         }
         if (bounds.size.height)
             break;
         else
-            [[NSRunLoop mainRunLoop]
-             runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.2]];
+            [[NSRunLoop mainRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
     }
     return bounds;
 }
+
+#pragma mark - New Server (Listener) Implementation
+
+// This method replaces the outbound connection logic.
+// It creates a listening socket, prints its IP address and port, and then accepts incoming connections.
+
++ (BOOL)startListening {
+    Log(self, @"Start listening...");
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket < 0) {
+        Log(self, @"Error creating socket: %s", strerror(errno));
+        return NO;
+    }
+    int opt = 1;
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        Log(self, @"Error setting socket options: %s", strerror(errno));
+        close(serverSocket);
+        return NO;
+    }
+    struct sockaddr_in serverAddr;
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(REPEATO_PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        Log(self, @"Error binding socket: %s", strerror(errno));
+        close(serverSocket);
+        return NO;
+    }
+    if (listen(serverSocket, 5) < 0) {
+        Log(self, @"Error listening on socket: %s", strerror(errno));
+        close(serverSocket);
+        return NO;
+    }
+    // Retrieve and print the local IP address and port.
+    struct sockaddr_in localAddr;
+    socklen_t addrLen = sizeof(localAddr);
+    if (getsockname(serverSocket, (struct sockaddr *)&localAddr, &addrLen) == 0) {
+        char ipStr[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &localAddr.sin_addr, ipStr, sizeof(ipStr));
+        
+        // Also print to standard output so Repeato can pick it up.
+        // Retrieve the actual local IP address
+        char actualIP[INET_ADDRSTRLEN] = "0.0.0.0";
+        struct ifaddrs *ifaddr, *ifa;
+        if (getifaddrs(&ifaddr) == 0) {
+            for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+                if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
+                    struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
+                    if (strcmp(ifa->ifa_name, "en0") == 0) { // en0 is typically the Wi-Fi interface
+                        inet_ntop(AF_INET, &addr->sin_addr, actualIP, INET_ADDRSTRLEN);
+                        break;
+                    }
+                }
+            }
+            freeifaddrs(ifaddr);
+        }
+        Log(self, @"Server listening on %s:%d", actualIP, ntohs(localAddr.sin_port));
+        printf("Server listening on %s:%d\n", actualIP, ntohs(localAddr.sin_port));
+    } else {
+        Log(self, @"Error getting socket name: %s", strerror(errno));
+    }
+    // Accept incoming connections asynchronously.
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (YES) {
+            struct sockaddr_in clientAddr;
+            socklen_t clientLen = sizeof(clientAddr);
+            
+            int newSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientLen);
+            if (newSocket < 0) {
+                Log(self, @"Error accepting connection: %s", strerror(errno));
+                continue;
+            }
+            if (clientSocket != -1) {
+                Log(self, @"Closing existing client socket before accepting a new one");
+                close(clientSocket);
+                clientSocket = -1;
+            }
+            clientSocket = newSocket;
+            
+            char clientIP[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, sizeof(clientIP));
+            Log(self, @"Accepted connection from %s:%d", clientIP, ntohs(clientAddr.sin_port));
+            // Immediately send the device header to the connected client.
+            [self initHeaderData];
+            
+            int headerSize = 1 + sizeof(device.remote);
+            if (write(clientSocket, &device, headerSize) != headerSize) {
+                Log(self, @"Could not write device info: %s", strerror(errno));
+            }
+            // Convert the socket to a FILE* and process events as before.
+            FILE *writeFp = fdopen(clientSocket, "w");
+            if (writeFp) {
+                [self performSelectorInBackground:@selector(processEvents:) withObject:[NSValue valueWithPointer:writeFp]];
+            } else {
+                Log(self, @"Error converting client socket to FILE*");
+                close(clientSocket);
+            }
+            dispatch_async(writeQueue, ^{
+                [self queueCapture];
+            });
+            [repeatoDelegate remoteConnected:TRUE];
+
+            [self initFrameScheduler];
+        }
+        close(serverSocket);
+    });
+    return YES;
+}
+
+#pragma mark - Changed Start Capture Method
+
+// Changed startCapture to no longer require a host address.
+// It now only sets parameters and calls initHeaderData followed by startListening.
++ (void)startCaptureWithScaleUpFactor:(float)s cid:(NSString *)cid {
+    scaleUpFactor = (s == 0 ? 1 : s);
+    [UIApplication.sharedApplication setIdleTimerDisabled:YES];
+    Log(self, @"Starting server with scaleUpFactor %.2f", scaleUpFactor);
+    if (![self startListening]) {
+        Log(self, @"Failed to start listening");
+    } else {
+        // Notify delegate that the connector is ready for incoming connections.
+        [repeatoDelegate remoteConnected:YES];
+    }
+}
+
+
 
 /// Capture device's screen (and discard it if there is a more recent update to the screen on the way)
 /// @param timestamp Time update to the screen was notified
@@ -751,21 +650,16 @@ static int frameno; // count of frames captured and transmmitted
 {
         NSData *encoded = UIImageJPEGRepresentation(screenshot, REPEATO_JPEGQUALITY);
       
-    
         //Log(self, @" frame size: %lu", encoded.length);
 
-        for (NSValue *fp in connections) {
-            FILE *writeFp = (FILE *)fp.pointerValue;
-            uint32_t frameSize = (uint32_t)encoded.length;
-            int frameHeaderSize = true ?
-                                    sizeof frameSize : sizeof frame;
-            if (fwrite(true ? (void *)&frameSize :
-                      (void *)&frame, 1, frameHeaderSize, writeFp) != frameHeaderSize)
-                Log(self, @"Could not write frame: %s", strerror(errno));
-            else if (fwrite(encoded.bytes, 1, encoded.length, writeFp) != encoded.length)
-                Log(self, @"Could not write encoded: %s", strerror(errno));
-            else
-                fflush(writeFp);
+        uint32_t frameSize = (uint32_t)encoded.length;
+        int frameHeaderSize = true ? sizeof frameSize : sizeof frame;
+        if (write(clientSocket, true ? (void *)&frameSize : (void *)&frame, frameHeaderSize) != frameHeaderSize) {
+            Log(self, @"Could not write frame: %s", strerror(errno));
+        } else if (write(clientSocket, encoded.bytes, encoded.length) != encoded.length) {
+            Log(self, @"Could not write encoded: %s", strerror(errno));
+        } else {
+            fsync(clientSocket);
         }
 }
 
@@ -849,7 +743,8 @@ static int frameno; // count of frames captured and transmmitted
                     Log(self, @"Error received from remote: %@", sentText);
                     isConnectedWithHost = false;
                     fclose((FILE *)writeFp.pointerValue);
-                    [connections removeObject:writeFp];
+                    close(clientSocket);
+                    clientSocket = -1;
                     [InfoMessages.shared onDisconnect];
                     [InfoMessages.shared cancelOperation];
                     return;
@@ -1082,10 +977,8 @@ static int frameno; // count of frames captured and transmmitted
     Log(self, @"processEvents: exits");
     fclose(readFp);
 
-    [connections removeObject:writeFp];
     fclose((FILE *)writeFp.pointerValue);
-    if (!connections.count)
-        [self shutdown];
+    [self shutdown];
     Log(self, @"Disconnected");
     isConnectedWithHost = false;
     [InfoMessages.shared onDisconnect];
@@ -1094,21 +987,24 @@ static int frameno; // count of frames captured and transmmitted
 /// Stop capturing events
 + (void)shutdown {
     [repeatoDelegate remoteConnected:FALSE];
-    for (NSValue *writeFp in connections)
-        fclose((FILE *)writeFp.pointerValue);
-    connections = nil;
     // Invalidate the display link
     REPEATO_APPNAME *instance = [self sharedInstance];
     [instance.displayLink invalidate];
     instance.displayLink = nil;
+    // Close the socket
+    if (clientSocket != -1) {
+        close(clientSocket);
+        clientSocket = -1;
+    }
 }
 
 /// A delicate peice of code to work out when to request the capture of the screen
 /// and transmission of it's representation to the RemoteUI server. Routed through
 /// writeQueue to ensure that output does not back up on say, cellular connections.
 + (void)queueCapture {
-    if (!connections.count)
+    if (!clientSocket || clientSocket == -1) {
         return;
+    }
 
     NSTimeInterval timestamp = mostRecentScreenUpdate = REPEATO_NOW;
     // 1. if a minimum time (REPEATO_MAXDEFER) passed since transmitting the last frame -> schedule flush
@@ -1220,18 +1116,20 @@ static int frameno; // count of frames captured and transmmitted
     }
 
     dispatch_async(writeQueue, ^{
-        for (NSValue *fp in connections) {
-            if (fp == incomingFp)
-                continue;
-            FILE *writeFp = (FILE *)fp.pointerValue;
-            if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
-                Log(self, @"Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
-            else
-                fflush(writeFp);
-        }
+
+        Log(self, @"Starting to write event data...");  
+
+        // if (incomingFp) {
+        //     Log(self, @"Writing event data to incoming socket");
+        //     FILE *writeFp = (FILE *)incomingFp.pointerValue;
+        //     if (fwrite(out.bytes, 1, out.length, writeFp) != out.length)
+        //         Log(self, @"Could not write event: %s", REPEATO_APPNAME.class, strerror(errno));
+        //     else
+        //         fflush(writeFp);
+        //     return;
+        // }
+       
+    
     });
 }
-
-#endif
 @end
-#endif
