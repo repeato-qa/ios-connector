@@ -1,9 +1,6 @@
 
 #define REPEATO_HYBRID
-//#define REMOTE_MINICAP
 #define REPEATO_PORT 1313
-//#define REMOTE_PNGFORMAT
-//#define REPEATO_APPNAME GenericCapture
 #define REPEATO_OVERSAMPLE 2
 #define REPEATO_BENCHMARK
 #define REPEATO_DEFER 0.2
@@ -25,7 +22,7 @@
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
     DebugLog(self, @"Launch arguments", [arguments componentsJoinedByString:@","]);
     float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
-    int port = [[NSUserDefaults standardUserDefaults] integerForKey:@"port"];
+    long port = [[NSUserDefaults standardUserDefaults] integerForKey:@"port"];
     NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
     
     if([hostAddress length] != 0) {

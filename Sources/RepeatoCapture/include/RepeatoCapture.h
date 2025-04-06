@@ -160,8 +160,8 @@ struct _rmevent {
 
 @interface REPEATO_APPNAME(Client)
 // Changed startCapture method to no longer require an address list
-+ (void)startCaptureWithScaleUpFactor:(float)s port:(int)port;
-+ (BOOL)startListeningOnPort:(int)port;
++ (void)startCaptureWithScaleUpFactor:(float)s port:(long)port;
++ (BOOL)startListeningOnPort:(long)port;
 + (void)shutdown;
 @end
 
@@ -430,7 +430,7 @@ static int clientSocket;
 // This method replaces the outbound connection logic.
 // It creates a listening socket, prints its IP address and port, and then accepts incoming connections.
 
-+ (BOOL)startListeningOnPort:(int)port {
++ (BOOL)startListeningOnPort:(long)port {
     Log(self, @"Start listening...");
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0) {
@@ -539,7 +539,7 @@ static int clientSocket;
 
 // Changed startCapture to no longer require a host address.
 // It now only sets parameters and calls initHeaderData followed by startListening.
-+ (void)startCaptureWithScaleUpFactor:(float)s port:(int)port {
++ (void)startCaptureWithScaleUpFactor:(float)s port:(long)port {
     scaleUpFactor = (s == 0 ? 1 : s);
     [UIApplication.sharedApplication setIdleTimerDisabled:YES];
     Log(self, @"Starting server with scaleUpFactor %.2f", scaleUpFactor);
