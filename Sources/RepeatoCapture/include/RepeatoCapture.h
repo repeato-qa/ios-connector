@@ -13,7 +13,7 @@
 #import "InfoMessages.h"
 
 #ifndef REPEATO_PORT
-#define REPEATO_PORT 31449
+#define REPEATO_PORT 1313
 #endif
 
 #ifndef REPEATO_APPNAME
@@ -21,13 +21,12 @@
 #endif
 
 #define REPEATO_MAGIC -141414141
-#define REPEATO_XOR 0xc5
 
 #ifndef REPEATO_OVERSAMPLE
 #ifndef REPEATO_HYBRID
 #define REPEATO_OVERSAMPLE 1.0
 #else
-#define REPEATO_OVERSAMPLE *(float *)device.remote.scale
+#define REPEATO_OVERSAMPLE *(float *)device.scale
 #endif
 #endif
 
@@ -102,24 +101,19 @@ typedef NS_ENUM(int, RMTouchPhase) {
 };
 
 struct _rmdevice {
-    char version;
-    union {
-        struct {
-            char machine[24];
-            char appname[64];
-            char appvers[24];
-            char hostname[63];
-            char scale[4]; // float
-            char isIPad[4]; // int
-            char protocolVersion[4];// int
-            char displaySize[12]; // 9999x9999
-            char deviceName[24];
-            char systemVersion[4]; // float
-            char appFrameWorkType[4]; // int 0: default, 1: flutter, 2: compose
-            char expansion[16];
-            char magic[4]; // int
-        } remote;
-    };
+    char machine[24];
+    char appname[64];
+    char appvers[24];
+    char hostname[63];
+    char scale[4]; // float
+    char isIPad[4]; // int
+    char protocolVersion[4];// int
+    char displaySize[12]; // 9999x9999
+    char deviceName[24];
+    char systemVersion[4]; // float
+    char appFrameWorkType[4]; // int 0: default, 1: flutter, 2: compose
+    char expansion[16];
+    char magic[4]; // int
     char reserved[32];
 };
 
@@ -166,8 +160,8 @@ struct _rmevent {
 
 @interface REPEATO_APPNAME(Client)
 // Changed startCapture method to no longer require an address list
-+ (void)startCaptureWithScaleUpFactor:(float)s cid:(NSString *)cid;
-+ (BOOL)startListening;
++ (void)startCaptureWithScaleUpFactor:(float)s port:(int)port;
++ (BOOL)startListeningOnPort:(int)port;
 + (void)shutdown;
 @end
 
@@ -349,24 +343,21 @@ static int clientSocket;
 + (void)initHeaderData {
     writeQueue = dispatch_queue_create("writeQueue", DISPATCH_QUEUE_SERIAL);
     // Initialize device header values:
-    // set device.version to 2
-    device.version = 2;
-
-    *(int *)device.remote.magic = REPEATO_MAGIC;
-    size_t size = sizeof device.remote.machine - 1;
-    sysctlbyname("hw.machine", device.remote.machine, &size, NULL, 0);
-    device.remote.machine[size] = '\0';
+    *(int *)device.magic = REPEATO_MAGIC;
+    size_t size = sizeof device.machine - 1;
+    sysctlbyname("hw.machine", device.machine, &size, NULL, 0);
+    device.machine[size] = '\0';
     NSDictionary *infoDict = [NSBundle mainBundle].infoDictionary;
-    strncpy(device.remote.appname, ([infoDict[@"CFBundleIdentifier"] UTF8String] ?: ""), sizeof(device.remote.appname) - 1);
-    strncpy(device.remote.appvers, ([infoDict[@"CFBundleShortVersionString"] UTF8String] ?: ""), sizeof(device.remote.appvers) - 1);
-    gethostname(device.remote.hostname, sizeof(device.remote.hostname) - 1);
-    *(float *)device.remote.scale = scaleUpFactor;
-    *(int *)device.remote.isIPad = ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad);
-    *(int *)device.remote.protocolVersion = 128;
+    strncpy(device.appname, ([infoDict[@"CFBundleIdentifier"] UTF8String] ?: ""), sizeof(device.appname) - 1);
+    strncpy(device.appvers, ([infoDict[@"CFBundleShortVersionString"] UTF8String] ?: ""), sizeof(device.appvers) - 1);
+    gethostname(device.hostname, sizeof(device.hostname) - 1);
+    *(float *)device.scale = scaleUpFactor;
+    *(int *)device.isIPad = ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    *(int *)device.protocolVersion = 180;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
     NSString *displaySize = [NSString stringWithFormat:@"%ix%i", (int)screenSize.width, (int)screenSize.height];
-    strncpy(device.remote.displaySize, [displaySize UTF8String], sizeof(device.remote.displaySize) - 1);
+    strncpy(device.displaySize, [displaySize UTF8String], sizeof(device.displaySize) - 1);
     
     __block NSString *deviceName;
     __block float systemVersion;
@@ -374,13 +365,13 @@ static int clientSocket;
         deviceName = [[UIDevice currentDevice] name];
         systemVersion = [[[UIDevice currentDevice] systemVersion] floatValue];
     });
-    strncpy(device.remote.deviceName, [deviceName UTF8String], sizeof(device.remote.deviceName) - 1);
-    *(float *)device.remote.systemVersion = systemVersion;
+    strncpy(device.deviceName, [deviceName UTF8String], sizeof(device.deviceName) - 1);
+    *(float *)device.systemVersion = systemVersion;
     if (NSClassFromString(@"FlutterViewController") != nil) {
-        *(int *)device.remote.appFrameWorkType = 1;
+        *(int *)device.appFrameWorkType = 1;
         Log(self, @"AppFrameWorkType: Flutter");
     } else if (NSClassFromString(@"ComposeAppBase") != nil || NSClassFromString(@"Applier") != nil) {
-        *(int *)device.remote.appFrameWorkType = 2;
+        *(int *)device.appFrameWorkType = 2;
         Log(self, @"AppFrameWorkType: Compose");
         dispatch_async(dispatch_get_main_queue(), ^{
             REPEATO_APPNAME *instance = [self sharedInstance];
@@ -439,7 +430,7 @@ static int clientSocket;
 // This method replaces the outbound connection logic.
 // It creates a listening socket, prints its IP address and port, and then accepts incoming connections.
 
-+ (BOOL)startListening {
++ (BOOL)startListeningOnPort:(int)port {
     Log(self, @"Start listening...");
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0) {
@@ -455,7 +446,7 @@ static int clientSocket;
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(REPEATO_PORT);
+    serverAddr.sin_port = htons(port > 0 ? port : REPEATO_PORT);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
         Log(self, @"Error binding socket: %s", strerror(errno));
@@ -519,8 +510,9 @@ static int clientSocket;
             // Immediately send the device header to the connected client.
             [self initHeaderData];
             
-            int headerSize = 1 + sizeof(device.remote);
-            if (write(clientSocket, &device, headerSize) != headerSize) {
+            long headerSize = sizeof(device);
+            long wroteBytes = write(clientSocket, &device, headerSize);
+            if (wroteBytes != headerSize) {
                 Log(self, @"Could not write device info: %s", strerror(errno));
             }
             // Convert the socket to a FILE* and process events as before.
@@ -547,11 +539,11 @@ static int clientSocket;
 
 // Changed startCapture to no longer require a host address.
 // It now only sets parameters and calls initHeaderData followed by startListening.
-+ (void)startCaptureWithScaleUpFactor:(float)s cid:(NSString *)cid {
++ (void)startCaptureWithScaleUpFactor:(float)s port:(int)port {
     scaleUpFactor = (s == 0 ? 1 : s);
     [UIApplication.sharedApplication setIdleTimerDisabled:YES];
     Log(self, @"Starting server with scaleUpFactor %.2f", scaleUpFactor);
-    if (![self startListening]) {
+    if (![self startListeningOnPort:port]) {
         Log(self, @"Failed to start listening");
     } else {
         // Notify delegate that the connector is ready for incoming connections.
@@ -576,7 +568,7 @@ static int clientSocket;
     //UIScreen *screen = [UIScreen mainScreen];
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
-    CGFloat imageScale = *(int *)device.remote.isIPad ? 1. : scaleUpFactor;
+    CGFloat imageScale = *(int *)device.isIPad ? 1. : scaleUpFactor;
     __block struct _rmframe frame = {REPEATO_NOW,
         {{(float)screenSize.width, (float)screenSize.height, (float)imageScale}}, 0};
 
