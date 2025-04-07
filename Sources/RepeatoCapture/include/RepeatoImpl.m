@@ -1,6 +1,5 @@
-
 #define REPEATO_HYBRID
-#define REPEATO_PORT 1313
+#define REPEATO_DEFAULT_PORT 1313
 #define REPEATO_OVERSAMPLE 2
 #define REPEATO_BENCHMARK
 #define REPEATO_DEFER 0.2
@@ -22,9 +21,13 @@
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
     DebugLog(self, @"Launch arguments", [arguments componentsJoinedByString:@","]);
     float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
-    long port = [[NSUserDefaults standardUserDefaults] integerForKey:@"port"];
+    // modified port parsing to include explicit cast
+    int port = (int)[[NSUserDefaults standardUserDefaults] integerForKey:@"port"];
     NSString *hostAddress = [[NSUserDefaults standardUserDefaults] stringForKey:@"host-address"];
     
+    if(port == 0){
+        port = REPEATO_DEFAULT_PORT;
+    }
     if([hostAddress length] != 0) {
         // if Repeato passes a host-address launch argument, it is a sign that it is an old Repeato version (<1.8.0)
         DebugLog(self, @"Error: \"%s\" This iOS connector version is too new for your Repeato version. Please upgrade Repeato to 1.8.x or downgrade the iOS connector version to 1.2.x", hostAddress);

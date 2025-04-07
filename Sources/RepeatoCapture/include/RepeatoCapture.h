@@ -12,9 +12,6 @@
 #import "Logger.h"
 #import "InfoMessages.h"
 
-#ifndef REPEATO_PORT
-#define REPEATO_PORT 1313
-#endif
 
 #ifndef REPEATO_APPNAME
 #define REPEATO_APPNAME RepeatoCapture
@@ -160,8 +157,8 @@ struct _rmevent {
 
 @interface REPEATO_APPNAME(Client)
 // Changed startCapture method to no longer require an address list
-+ (void)startCaptureWithScaleUpFactor:(float)s port:(long)port;
-+ (BOOL)startListeningOnPort:(long)port;
++ (void)startCaptureWithScaleUpFactor:(float)s port:(int)port;
++ (BOOL)startListeningOnPort:(int)port;
 + (void)shutdown;
 @end
 
@@ -430,7 +427,7 @@ static int clientSocket;
 // This method replaces the outbound connection logic.
 // It creates a listening socket, prints its IP address and port, and then accepts incoming connections.
 
-+ (BOOL)startListeningOnPort:(long)port {
++ (BOOL)startListeningOnPort:(int)port {
     Log(self, @"Start listening...");
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0) {
@@ -446,7 +443,7 @@ static int clientSocket;
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port > 0 ? port : REPEATO_PORT);
+    serverAddr.sin_port = htons(port > 0 ? port : REPEATO_DEFAULT_PORT);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
         Log(self, @"Error binding socket: %s", strerror(errno));
@@ -539,7 +536,7 @@ static int clientSocket;
 
 // Changed startCapture to no longer require a host address.
 // It now only sets parameters and calls initHeaderData followed by startListening.
-+ (void)startCaptureWithScaleUpFactor:(float)s port:(long)port {
++ (void)startCaptureWithScaleUpFactor:(float)s port:(int)port {
     scaleUpFactor = (s == 0 ? 1 : s);
     [UIApplication.sharedApplication setIdleTimerDisabled:YES];
     Log(self, @"Starting server with scaleUpFactor %.2f", scaleUpFactor);
