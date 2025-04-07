@@ -363,18 +363,21 @@ bool noLaunchArgPassed = false;
 
 #pragma mark Logger delegate
 - (void)logEvent:(NSString *)message {
-    if(self.tv == nil) {
-        /// fall back to track logs before tv initializaiton
-        logsHistory = [logsHistory stringByAppendingString:[NSString stringWithFormat:@"%@\n", message]];
-        return;
-    }
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if(![logsHistory isEqualToString:@""]) {
-            self.tv.text = logsHistory;
-            logsHistory = @"";
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if(self.tv == nil) {
+            /// fall back to track logs before tv initializaiton
+            logsHistory = [logsHistory stringByAppendingString:[NSString stringWithFormat:@"%@\n", message]];
+            return;
         }
-        [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
-        [self textViewScrollToBottom];
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if(![logsHistory isEqualToString:@""]) {
+                self.tv.text = logsHistory;
+                logsHistory = @"";
+            }
+            [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
+            [self textViewScrollToBottom];
+        });
     });
 }
 
