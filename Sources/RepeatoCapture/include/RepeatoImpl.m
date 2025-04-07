@@ -19,7 +19,7 @@
 + (void)load {
     [[InfoMessages shared] showAlert];
     NSArray *arguments = [[NSProcessInfo processInfo] arguments];
-    DebugLog(self, @"Launch arguments", [arguments componentsJoinedByString:@","]);
+    Log(self, @"Launch arguments: ", [arguments componentsJoinedByString:@","]);
     float scaleUpFactor = [[NSUserDefaults standardUserDefaults] floatForKey:@"scale-up-factor"];
     // modified port parsing to include explicit cast
     int port = (int)[[NSUserDefaults standardUserDefaults] integerForKey:@"port"];
@@ -30,7 +30,7 @@
     }
     if([hostAddress length] != 0) {
         // if Repeato passes a host-address launch argument, it is a sign that it is an old Repeato version (<1.8.0)
-        DebugLog(self, @"Error: \"%s\" This iOS connector version is too new for your Repeato version. Please upgrade Repeato to 1.8.x or downgrade the iOS connector version to 1.2.x", hostAddress);
+        Log(self, @"Error: This iOS connector version is too new for your Repeato version. Please upgrade Repeato to 1.8.x or downgrade the iOS connector version to 1.2.x");
     } else {
         [self startCaptureWithScaleUpFactor:scaleUpFactor port:port];
     }
