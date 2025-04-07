@@ -363,23 +363,18 @@ bool noLaunchArgPassed = false;
 
 #pragma mark Logger delegate
 - (void)logEvent:(NSString *)message {
-    //adding a 1 second delay so that textview is not nil as the connector send messages too quick before the UI is fully up and running.
-    
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.001 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), ^{
         if(self.tv == nil) {
             /// fall back to track logs before tv initializaiton
             logsHistory = [logsHistory stringByAppendingString:[NSString stringWithFormat:@"%@\n", message]];
             return;
         }
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if(![logsHistory isEqualToString:@""]) {
-                self.tv.text = logsHistory;
-                logsHistory = @"";
-            }
-            [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
-            [self textViewScrollToBottom];
-        });
+        if(![logsHistory isEqualToString:@""]) {
+            self.tv.text = logsHistory;
+            logsHistory = @"";
+        }
+        [self.tv insertText:[NSString stringWithFormat:@"%@\n", message]];
+        [self textViewScrollToBottom];
     });
 }
 
