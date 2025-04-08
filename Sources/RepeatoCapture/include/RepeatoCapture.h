@@ -506,6 +506,7 @@ static int clientSocket;
             Log(self, @"Accepted connection from %s:%d", clientIP, ntohs(clientAddr.sin_port));
             // Immediately send the device header to the connected client.
             [self initHeaderData];
+            [[InfoMessages shared] onConnect];
             
             long headerSize = sizeof(device);
             long wroteBytes = write(clientSocket, &device, headerSize);
