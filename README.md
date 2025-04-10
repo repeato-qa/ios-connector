@@ -1,20 +1,21 @@
 # iOS Connector for Repeato Studio and Repeato CLI
 
 This open source library allows remote controlling iOS devices / simulators from an automation host.
+
 The connector library needs to be embedded into your app and takes care of transmitting and receiving data from [Repeato Studio](https://www.repeato.app) or [Repeato CLI](https://www.npmjs.com/package/@repeato/cli-testrunner).
+
+> This is the new connector that works a bit differently than the old one (v1.2.x, see documentation [here](https://github.com/repeato-qa/ios-connector/tree/1.2.8)). 
 
 # How does the connector work?
 
-When the app is launched, the connector tries to connect to the host (Repeato Studio or Repeato CLI) via a websocket connection. If the connection is established, the connector starts listening for incoming commands and executes them. The connector also sends back a video feed to the host.
+When the app is launched, the connector will open a server port that an automation host can connect to. As soon as a connection is established, the connector waits for incoming commands and executes them. The connector also sends back a video feed to the host (single jpeg frames).
 
-When the app is lauched on an iOS Simulators, the connector simply connects to localhost:1313. 
-When the app is launched on a physical device however, the connector does not know where to connect to (localhost doesn't work in this case). It's going to try to connect to the host the app was originally built on, but that doesn't always work.
+The port that the connector listens on can be configured via the `-port`launch argument. By default, the connector listens on port 1313.
 
-Therefore Repeato passes it's own host IP to the app via launch arguments. The connector then tries to connect to the host IP. 
-In case of a connection error, the connector shows a dialog to the user to help them debugging the issue.
+As long as there is no connection, the connector shows a dialog to the user to help them to debug potential issues.
 
-So when working with phyisical iOS devices, make sure you start the app via Repeato (either via a "Start app" step, or via the "Start last used app" button).
-Manual app launches most probably will not work.
+Make sure that you always launch the app via Repeato, which will take care of passing the right `-port` argument before establishing a connection.
+
 
 # Installation
 
@@ -60,7 +61,7 @@ In the next step just click "Add Package" once more.
 
 ### 3. Build an launch app
 
-That's it. Just build and run your project via Xcode on the simulator. Repeato connector will find your Repeato instance, and connect to it.
+That's it. Just build and run your project via Xcode on the simulator. If you (re) start the app via Repeato, the connector will be started automatically and Repeato can connect to it.
 
 ## Installation via CocoaPods
 
@@ -115,7 +116,7 @@ Check: When you launch the app, is this dialog shown?
 
 <img src="/docs/assets/ios-connector-dialog.png" width="50%" />
 
-**If YES**: Take a look at the line "Trying to connect to ...". The connector is trying to connect to that address. If that address is wrong, the app will not be able to connect to Repeato. If you are running the app on a simulator, the address can default to "localhost", that is fine. If you are running the app on a physical device however, the address of your machine, running Repeato, might not be known by the app. In that case, you need to start the app via Repeato (either via a "Start app" step, or via the "Start last used app" button). Manual app launches most probably will not work.
+**If YES**: The connector seems to be installed correctly, but for some reason Repeato might not be able to connect to it. Make sure that your device and Repeato run on the same network.
 
 **If NO**: You might need to check if the plugin is integrated properly. If you are not a developer, you might need to talk to one. The plugin is open source, so they might easily find the reason why the dialog is not shown.
 
@@ -123,19 +124,14 @@ Check: When you launch the app, is this dialog shown?
 (mostly internal documentation for our dev team)
 
 ## Connection debug dialog shown on device - how does it work?
-The connector shows a dialog on launch of the app to simplify debugging for the user in case of a connection issue. As soon as the connector connects to Repeato, the dialog is automatically closed.
+The connector shows a dialog on launch of the app to simplify debugging for the user in case of a connection issue. As soon as a connection is established, the dialog is automatically closed.
 
 Here are the details of how this dialog operates:
 
-1. If no connection possible on real device: show dialog with countdown and close app
-2. If no connection possible on simulator: show dialog with log, but no countdown and no app close
-3. If connection established: hide dialog and stop logging to text view
-4. If connection breaks on real device: show dialog with countdown and close app (in the future, we should try to reconnect automatically)
-5. If connection breaks on simulator: show dialog, but no countdown and no app close (in the future, we should try to reconnect automatically)
-6. If "Cancel" button is pressed, countdown and cancel button should be hidden and and app close should be canceled. Dialog should stay open
+1. If no connection possible: show dialog
+2. If connection established: hide dialog and stop logging to text view
+3. If connection breaks: show dialog
 
-**To sum it up**: It doesn't matter if host IP is known or not and if launch args are given or not: We show the dialog when there is no connection to the host (either because it is not yet established or it was not possible or the connection broke)
-Additionally we show a countdown and close the app if no connection is there BUT only on physical devices.
 
 ## Xamarin - How to create/update the bindings library.
 
