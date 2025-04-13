@@ -335,6 +335,7 @@ static Class UIWindowLayer; // Use to filter for full window layer updates
 static UITouch *realTouch; // An actual UITouch recycled for forging events
 static CGSize bufferSize; // current size of off-screen image buffers
 static int clientSocket;
+static int serverSocket;
 
 // Initialize capture and device header; this is unchanged from previous behavior.
 + (void)initHeaderData {
@@ -350,7 +351,7 @@ static int clientSocket;
     gethostname(device.hostname, sizeof(device.hostname) - 1);
     *(float *)device.scale = scaleUpFactor;
     *(int *)device.isIPad = ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad);
-    *(int *)device.protocolVersion = 180;
+    *(int *)device.protocolVersion = 182;
     CGRect screenBounds = [self screenBounds];
     CGSize screenSize = screenBounds.size;
     NSString *displaySize = [NSString stringWithFormat:@"%ix%i", (int)screenSize.width, (int)screenSize.height];
@@ -422,14 +423,14 @@ static int clientSocket;
     return bounds;
 }
 
-#pragma mark - New Server (Listener) Implementation
 
 // This method replaces the outbound connection logic.
 // It creates a listening socket, prints its IP address and port, and then accepts incoming connections.
 
 + (BOOL)startListeningOnPort:(int)port {
     Log(self, @"Start listening...");
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0) {
         Log(self, @"Error creating socket: %s", strerror(errno));
         return NO;
@@ -485,7 +486,7 @@ static int clientSocket;
     }
     // Accept incoming connections asynchronously.
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        while (YES) {
+        while (serverSocket != -1) {
             struct sockaddr_in clientAddr;
             socklen_t clientLen = sizeof(clientAddr);
             
@@ -533,7 +534,11 @@ static int clientSocket;
     return YES;
 }
 
-#pragma mark - Changed Start Capture Method
++ (void)handleDidEnterBackground:(NSNotification *)notification {
+    // Close your network connections here.
+    Log(self, @"App entered background, closing socket");
+    [self shutdown];
+}
 
 // Changed startCapture to no longer require a host address.
 // It now only sets parameters and calls initHeaderData followed by startListening.
@@ -546,6 +551,11 @@ static int clientSocket;
     } else {
         // Notify delegate that the connector is ready for incoming connections.
         [repeatoDelegate remoteConnected:YES];
+        Log(self, @"Registering background observer");
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                selector:@selector(handleDidEnterBackground:)
+                                                    name:UIApplicationDidEnterBackgroundNotification
+                                                  object:nil];
     }
 }
 
@@ -986,6 +996,13 @@ static int clientSocket;
         close(clientSocket);
         clientSocket = -1;
     }
+    if (serverSocket != -1) {
+        close(serverSocket);
+        serverSocket = -1;
+    }
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                name:UIApplicationDidEnterBackgroundNotification
+                                              object:nil];
 }
 
 /// A delicate peice of code to work out when to request the capture of the screen
