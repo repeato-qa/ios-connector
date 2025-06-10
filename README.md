@@ -1,4 +1,8 @@
-# iOS Connector for Repeato Studio and Repeato CLI
+
+# DEPRECATED iOS Connector for Repeato Studio and Repeato CLI
+
+**This connector was used up until Repeato 1.7. Repeato 1.8 and up uses a different approach to connect to iOS devices.**
+
 
 This open source library allows remote controlling iOS devices / simulators from an automation host.
 
